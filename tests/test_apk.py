@@ -1,25 +1,26 @@
-import tempfile
+import pytest
 import zipfile
 import os
 
 from android.apk import get_permissions
 
-_temp = None
+
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+@pytest.fixture(scope="module")
+def manifest_file():
+    return 'tests/sample/HippoSMS/AndroidManifest.axml'
+>>>>>>> 05618c1 (Test for get_permissions())
+=======
+@pytest.fixture(scope="module")
+def dex_file():
+    return 'tests/sample/HippoSMS/classes.dex'
+>>>>>>> 0713a65 (Temp)
 
 
-def setup_module():
-    global _temp
-    _temp = tempfile.TemporaryDirectory()
-
-    with zipfile.ZipFile('tests/sample/HippoSMS.apk') as zip:
-        zip.extract('classes.dex', path=_temp.name)
-        zip.extract('AndroidManifest.xml', path=_temp.name)
-
-
-def test_get_permissions():
-    manifest_path = os.path.join(_temp.name, 'AndroidManifest.xml')
-
-    assert get_permissions(manifest_path) == set([
+def test_get_permissions(manifest_file):
+    assert get_permissions(manifest_file) == set([
         'android.permission.INTERNET',
         'android.permission.ACCESS_NETWORK_STATE',
         'android.permission.MOUNT_UNMOUNT_FILESYSTEMS',
