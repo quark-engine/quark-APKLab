@@ -5,18 +5,9 @@ import os
 from android.apk import get_permissions
 
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
 @pytest.fixture(scope="module")
 def manifest_file():
     return 'tests/sample/HippoSMS/AndroidManifest.axml'
->>>>>>> 05618c1 (Test for get_permissions())
-=======
-@pytest.fixture(scope="module")
-def dex_file():
-    return 'tests/sample/HippoSMS/classes.dex'
->>>>>>> 0713a65 (Temp)
 
 
 def test_get_permissions(manifest_file):
