@@ -2,6 +2,8 @@ import json
 import os.path
 import r2pipe
 
+import enum
+
 # Resource Types Definition
 # reference to https://android.googlesource.com/platform/frameworks/base/+/master/libs/androidfw/include/androidfw/ResourceTypes.h
 
@@ -29,6 +31,28 @@ RES_TABLE_LIBRARY_TYPE = 0x0203
 RES_TABLE_OVERLAYABLE_TYPE = 0x0204
 RES_TABLE_OVERLAYABLE_POLICY_TYPE = 0x0205
 
+# Types for Res_value
+class Res_value_type(enum.Enum):
+    TYPE_NULL = 0x00,
+    TYPE_REFERENCE = 0x01,
+    TYPE_ATTRIBUTE = 0x02,
+    TYPE_STRING = 0x03,
+    TYPE_FLOAT = 0x04,
+    TYPE_DIMENSION = 0x05,
+    TYPE_FRACTION = 0x06,
+    TYPE_DYNAMIC_REFERENCE = 0x07,
+    TYPE_DYNAMIC_ATTRIBUTE = 0x08,
+    TYPE_FIRST_INT = 0x10,
+    TYPE_INT_DEC = 0x10,
+    TYPE_INT_HEX = 0x11,
+    TYPE_INT_BOOLEAN = 0x12,
+    TYPE_FIRST_COLOR_INT = 0x1c,
+    TYPE_INT_COLOR_ARGB8 = 0x1c,
+    TYPE_INT_COLOR_RGB8 = 0x1d,
+    TYPE_INT_COLOR_ARGB4 = 0x1e,
+    TYPE_INT_COLOR_RGB4 = 0x1f,
+    TYPE_LAST_COLOR_INT = 0x1f,
+    TYPE_LAST_INT = 0x1f
 
 class AxmlException(Exception):
     """
@@ -82,9 +106,9 @@ class AxmlReader(object):
             raise AxmlException(
                 f'預期檔案容量({self._axml_size})大於實際容量({self._file_size})')
 
-        if (self._axml_size < self._file_size):
-            print_warning(
-                f'預期檔案容量({self._axml_size})小於實際容量({self._file_size})，檔案可能被附加資料')
+        # if (self._axml_size < self._file_size):
+        #     print_warning(
+        #         f'預期檔案容量({self._axml_size})小於實際容量({self._file_size})，檔案可能被附加資料')
 
         self._ptr = self._ptr+8
         if self._ptr >= self._axml_size:
@@ -96,7 +120,7 @@ class AxmlReader(object):
         string_pool_size = string_pool_header[0]['value'][2]['value']
 
         if string_pool_size > self._axml_size - self._ptr:
-            raise AxmlException(f'資料長度不足，應至少有 {total_size} 但只有 {size}')
+            raise AxmlException(f'資料長度不足，應至少有 {string_pool_size} 但只有 {self._axml_size - self._ptr}')
 
         header = string_pool_header[0]['value']
         header_type = header[0]['value']
@@ -131,7 +155,7 @@ class AxmlReader(object):
             # Skip all the resource map
 
             if map_size > self._axml_size - self._ptr:
-                raise AxmlException(f'資料長度不足，應至少有 {total_size} 但只有 {size}')
+                raise AxmlException(f'資料長度不足，應至少有 {map_size} 但只有 {self._axml_size - self._ptr}')
                 return
 
             self._ptr = self._ptr + map_size
@@ -202,8 +226,8 @@ class AxmlReader(object):
             self._ptr = self._ptr + node_size
             yield node
 
-        if self._ptr != self._file_size:
-            print_warning(f'{ self._file_size - self._ptr } byte 遺留於檔案之後')
+        # if self._ptr != self._file_size:
+        #     print_warning(f'{ self._file_size - self._ptr } byte 遺留於檔案之後')
 
     @property
     def file_size(self):

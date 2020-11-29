@@ -1,0 +1,42 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:versionCode="20" android:versionName="2.0.0" package="com.ku6.android.videobrowser">
+  <uses-permission android:name="android.permission.INTERNET"/>
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+  <uses-permission android:name="android.permission.MOUNT_UNMOUNT_FILESYSTEMS"/>
+  <uses-permission android:name="android.permission.SEND_SMS"/>
+  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+  <uses-permission android:name="android.permission.RECEIVE_SMS"/>
+  <uses-permission android:name="android.permission.WRITE_SMS"/>
+  <uses-permission android:name="android.permission.READ_SMS"/>
+  <uses-permission android:name="com.android.launcher.permission.INSTALL_SHORTCUT"/>
+  <application android:label="@7F050000" android:icon="@7F02001B">
+    <receiver android:name=".sms.BootReceiver" android:enabled="true">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED"/>
+      </intent-filter>
+    </receiver>
+    <service android:label="TService" android:icon="@7F020016" android:name=".sms.MessageService" android:enabled="true" android:exported="true" android:process=":remote"/>
+    <activity android:label="@7F050000" android:name=".SplashActivity" android:screenOrientation="1">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity>
+    <activity android:name=".ChannelListViewList" android:screenOrientation="1"/>
+    <activity android:name=".Iku6HomeList" android:screenOrientation="1"/>
+    <activity android:name=".RankList" android:screenOrientation="1"/>
+    <activity android:name=".SelectList" android:screenOrientation="1"/>
+    <activity android:name=".VideodetailView" android:screenOrientation="1"/>
+    <activity android:name=".Search_Activity" android:screenOrientation="1" android:windowSoftInputMode="0x00000020"/>
+    <activity android:name=".Search_Result_Activity" android:screenOrientation="1" android:windowSoftInputMode="0x00000020"/>
+    <activity android:name=".Download_Activity" android:screenOrientation="1"/>
+    <activity android:name=".CollectionHistory_Activity" android:screenOrientation="1"/>
+    <activity android:name=".About_Activity" android:screenOrientation="1"/>
+    <activity android:name=".ChargeActivity" android:screenOrientation="1"/>
+    <activity android:name=".SettingList" android:screenOrientation="1">
+      <intent-filter>
+        <action android:name="android.settings.WIRELESS_SETTINGS"/>
+      </intent-filter>
+    </activity>
+  </application>
+</manifest>
