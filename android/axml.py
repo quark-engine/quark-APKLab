@@ -31,7 +31,7 @@ RES_TABLE_LIBRARY_TYPE = 0x0203
 RES_TABLE_OVERLAYABLE_TYPE = 0x0204
 RES_TABLE_OVERLAYABLE_POLICY_TYPE = 0x0205
 
-# Types for Res_value
+
 class Res_value_type(enum.Enum):
     TYPE_NULL = 0x00,
     TYPE_REFERENCE = 0x01,
@@ -54,30 +54,37 @@ class Res_value_type(enum.Enum):
     TYPE_LAST_COLOR_INT = 0x1f,
     TYPE_LAST_INT = 0x1f
 
+
 class AxmlException(Exception):
     """
-    :message 
+    A Exception for AxmlReader, telling us what's going on.
     """
 
     def __init__(self, message):
-        """
-        docstring
-        """
         super(AxmlException, self).__init__(message)
 
 
 class AxmlReader(object):
     """
-    docstring
+    Parse thought the whole Android XML file
     """
 
     def __init__(self, file_path, struct_path=None):
+        """
+        :param file_path: path lead to an AXML file
+        :type file_path: str
+        :param struct_path: path lead to r2 format definition file , defaults to None
+        :type struct_path: str, optional
+
+        :raises AxmlException: the file is not in AXML format, or is broken. 
+        """
         if struct_path is None:
             directory = 'android/struct'
             struct_path = os.path.join(directory, 'axml')
 
         if not os.path.isfile(struct_path):
-            raise AxmlException('找不到 Radare2 結構定義檔')
+            raise AxmlException(
+                f'Cannot find Radare2 format definition file in {struct_path}')
 
         self._r2 = r2pipe.open(file_path)
         self._r2.cmd(f'pfo {struct_path}')
@@ -88,9 +95,9 @@ class AxmlReader(object):
         self._cache = {}
 
         if self._file_size > 0xFFFF_FFFF:
-            raise AxmlException("開啟檔案超過理論上限，是否確定檔案為 AXML")
+            raise AxmlException("Filesize exceeds theoretical upper bound.")
         elif self._file_size < 8:
-            raise AxmlException("開啟檔案小於理論下限，是否確定檔案為 AXML")
+            raise AxmlException("Filesize exceeds theoretical lower bound.")
 
         # File Header
         header = self._r2.cmdj('pfj axml_ResChunk_header @ 0x0')
@@ -100,15 +107,12 @@ class AxmlReader(object):
         header_size = header[1]['value']
 
         if self._data_type != RES_XML_TYPE or header_size != 0x8:
-            raise AxmlException("開啟檔案格式錯誤，是否確定檔案為 XML ?")
+            raise AxmlException(
+                f"Error parsing first header(type: {self._data_type}, size: {header_size}).")
 
         if (self._axml_size > self._file_size):
             raise AxmlException(
-                f'預期檔案容量({self._axml_size})大於實際容量({self._file_size})')
-
-        # if (self._axml_size < self._file_size):
-        #     print_warning(
-        #         f'預期檔案容量({self._axml_size})小於實際容量({self._file_size})，檔案可能被附加資料')
+                f'Decleared size ({self._axml_size} bytes) is larger than total size({self._file_size}).')
 
         self._ptr = self._ptr+8
         if self._ptr >= self._axml_size:
@@ -120,17 +124,20 @@ class AxmlReader(object):
         string_pool_size = string_pool_header[0]['value'][2]['value']
 
         if string_pool_size > self._axml_size - self._ptr:
-            raise AxmlException(f'資料長度不足，應至少有 {string_pool_size} 但只有 {self._axml_size - self._ptr}')
+            raise AxmlException(
+                f'Error parsing string pool, there should be {string_pool_size} bytes but only {self._axml_size - self._ptr} bytes.')
 
         header = string_pool_header[0]['value']
         header_type = header[0]['value']
         header_size = header[1]['value']
 
         if header_type != RES_STRING_POOL_TYPE:
-            raise AxmlException(f'檔案格式錯誤，預期於 {self._ptr} 讀到字串池')
+            raise AxmlException(
+                f'Error parsing string pool, expect string pool data at {self._ptr} bytes.')
 
         if header_size != 28:
-            raise AxmlException(f'檔案格式錯誤，字串池大小應是 28 而不是 { header_size }')
+            raise AxmlException(
+                f'Error parsing string pool, heardsize should be 16 bytes rather than { header_size } bytes.')
 
         self._stringCount = string_pool_header[0]["value"][1]["value"]
         stringStart = string_pool_header[4]["value"]
@@ -155,7 +162,8 @@ class AxmlReader(object):
             # Skip all the resource map
 
             if map_size > self._axml_size - self._ptr:
-                raise AxmlException(f'資料長度不足，應至少有 {map_size} 但只有 {self._axml_size - self._ptr}')
+                raise AxmlException(
+                    f'Map size should be {map_size} bytes rather than {self._axml_size - self._ptr} bytes.')
                 return
 
             self._ptr = self._ptr + map_size
@@ -163,7 +171,14 @@ class AxmlReader(object):
                 return
 
     def __iter__(self):
-        # Composed of a series of ResXMLTree_node and node extends
+        """Give a generator for iterating thought all the axml nodes except first chunk header and string pool.
+        All the nodes are basically composed by 'Address', 'Type', 'Name', 'Namespace'. According to the type
+        a node is, some keys would be added additionally.
+
+        :raises AxmlException: not enough date left for parsing or the heardsize is wrong.
+        :yield: a axml structure node
+        :rtype: dict
+        """
 
         while (self._axml_size - self._ptr >= 16):
             header = self._r2.cmdj(f'pfj axml_ResXMLTree_node @ {self._ptr}')
@@ -174,11 +189,11 @@ class AxmlReader(object):
 
             if header_size != 16:
                 raise AxmlException(
-                    f'標頭大小與預期不符，讀到 {header_size} 而不是 16，或許是 Bug?')
+                    f'heardsize should be 16 bytes rather than { header_size } bytes.')
 
             if node_size > self._axml_size - self._ptr:
                 raise AxmlException(
-                    f'資料長度不足，應至少有 {node_size} 但只有 {self._axml_size - self._ptr}')
+                    f'Not enough data left, need {node_size} bytes but {self._axml_size - self._ptr} bytes left.')
 
             ext_ptr = self._ptr + 16
 
@@ -219,7 +234,6 @@ class AxmlReader(object):
                 # typedData
 
             else:
-                #print_warning(f'未知的資料，嘗試跳過 {node_type} bytes')
                 self._ptr = self._ptr + node_size
                 continue
 
@@ -231,14 +245,33 @@ class AxmlReader(object):
 
     @property
     def file_size(self):
+        """Return total filesize
+
+        :return: total size
+        :rtype: int
+        """
         return self._file_size
 
     @property
     def axml_size(self):
+        """Return decleared filessize
+
+        :return: decleared filesize
+        :rtype: int
+        """
         return self._axml_size
 
-    def get_string(self, index) -> str:
-        if index < 0:
+    def get_string(self, index):
+        """Return the corresponding string according to the given index.
+
+        if index exceeds the number of strings in the string pool or index is negative, None will be returned.
+
+        :param index: an index for a corresponding string
+        :type index: int
+        :return: a string if index is valid, else None
+        :rtype: str
+        """
+        if index < 0 or index >= self._stringCount:
             return None
 
         if not index in self._cache.keys():
@@ -247,7 +280,18 @@ class AxmlReader(object):
 
         return self._cache[index]
 
-    def get_attributes(self, node) -> list:
+    def get_attributes(self, node):
+        """Return attributes that are related to the given node.
+
+        A node is a dict which is generated by this class, must accept a string 'Type' as its key.
+        string 'Type' is used to determine the type of the given node. Not performing any search
+        for corresponding attributes until a RES_XML_START_ELEMENT_TYPE type node is given.
+
+        :param node: a dict generated by this class and represent as an element
+        :type node: dict
+        :return: a list of dicts represent as attributes
+        :rtype: list
+        """
         if node['Type'] != RES_XML_START_ELEMENT_TYPE:
             return None
         extAddress = int(node['Address']) + 16
