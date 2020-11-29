@@ -139,11 +139,11 @@ class AxmlReader(object):
             raise AxmlException(
                 f'Error parsing string pool, heardsize should be 16 bytes rather than { header_size } bytes.')
 
-        self._stringCount = string_pool_header[0]["value"][1]["value"]
+        self._stringCount = string_pool_header[1]["value"]
         stringStart = string_pool_header[4]["value"]
 
         self._r2.cmd(f'f string_pool_header @ 0x8 ')
-        string_pool_index = self._stringCount + self._ptr
+        string_pool_index = header_size + self._ptr
         self._r2.cmd(f'f string_pool_index @ { string_pool_index }')
         string_pool_data = stringStart + self._ptr
         self._r2.cmd(f'f string_pool_data @ { string_pool_data }')

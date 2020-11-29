@@ -14,6 +14,54 @@ def xml_file():
     return 'tests/sample/HippoSMS/AndroidManifest.xml'
 
 
+def test_axml_info(axml_file: str):
+    axml = AxmlReader(axml_file)
+    assert axml.file_size == 5756
+    assert axml.axml_size == 5756
+    assert axml._stringCount == 56
+
+
+def test_get_string(axml_file: str):
+    axml = AxmlReader(axml_file)
+    assert axml.get_string(0) == 'versionCode'
+
+
+def test_get_attributes(axml_file: str):
+    axml = AxmlReader(axml_file)
+
+    iterator = iter(axml)
+    node = None
+    while True:
+        node = next(iterator)
+        if node['Type'] == RES_XML_START_ELEMENT_TYPE:
+            break
+
+    attributes = axml.get_attributes(node)
+
+    truths = [
+        {'Namespace': 11,
+         'Name': 0,
+         'Value': -1,
+         'Type': 16,
+         'Data': 20},
+        {'Namespace': 11,
+         'Name': 1,
+         'Value': 16,
+         'Type': 3,
+         'Data': 16},
+        {'Namespace': -1,
+         'Name': 13,
+         'Value': 15,
+         'Type': 3,
+         'Data': 15}
+    ]
+
+    assert len(attributes) == len(truths)
+    for i in range(3):
+        for key in attributes[i].keys():
+            assert attributes[i][key] == truths[i][key]
+
+
 def test_xml(xml_file):
     with pytest.raises(AxmlException):
         AxmlReader(xml_file)
