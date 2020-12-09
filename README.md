@@ -1,6 +1,6 @@
 # Ｑuark APK Lab
 
-A Apk Library for the improvement of the five-stage inspection of Quark.
+An Apk Library for the improvement of the five-stage inspection of Quark.
 
 ## The ideal of APK Lab
 
