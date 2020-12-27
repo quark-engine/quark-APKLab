@@ -1,15 +1,35 @@
 import os
 import os.path
+import re
 import tempfile
 import zipfile
-from functools import cached_property
+import r2pipe
+from functools import cached_property, lru_cache
 
 from .axml import AxmlReader
 
 
+class MethodId(object):
+    """
+    Information about a method in a dex file.
+    """
+
+    def __init__(self, address, classname, methodname, descriptor):
+        self.address = address
+        self.classname = classname
+        self.methodname = methodname
+        self.descriptor = descriptor
+
+    def __eq__(self, obj):
+        return isinstance(obj, MethodId) and obj.address == self.address and obj.classname == self.classname and obj.methodname == self.methodname and obj.descriptor == self.descriptor
+
+    def __hash__(self):
+        return hash(self.address) ^ hash(self.classname) ^ hash(self.methodname) ^ hash(self.descriptor)
+
+
 class Apkinfo(object):
     """
-    Information about apk based on radare2 analysis
+    Information about apk based on radare2 analysis.
     """
 
     def __init__(self, apk_file, tmp_dir=None):
@@ -36,6 +56,12 @@ class Apkinfo(object):
                     'classes') and f.endswith('.dex'), apk.namelist()):
                 apk.extract(dex, path=self._tmp_dir)
                 self._dex_list.append(os.path.join(self._tmp_dir, dex))
+
+    @lru_cache()
+    def _get_r2(self, index):
+        r2 = r2pipe.open(self._dex_list[index])
+        r2.cmd('aa')
+        return r2
 
     @property
     def manifest(self):
@@ -70,7 +96,59 @@ class Apkinfo(object):
 
         return permission_list
 
-    def find_method(self, class_name=".*", method_name=".*", descriptor=".*"):
+    def find_methods(self, classname='', methodname='', descriptor=''):
+        """
+        Find a list of methods matching given infomations.
+
+        NOTE: finding method with only descriptor provided is not accurate currently.
+
+        :param classname: Name of class which methods belong to , defaults to ''
+        :type classname: str, optional
+        :param methodname: Name of method for matching, defaults to ''
+        :type methodname: str, optional
+        :param descriptor: Descriptor of method for matching, defaults to ''
+        :type descriptor: str, optional
+        :return: a list of methods
+        :rtype: list of MethodId objects
+        """
+        method_filter = None
+        if classname or methodname:
+            method_filter = f'&{classname}.method.{methodname}'
+            if methodname:
+                method_filter += '('
+
+        if descriptor:
+            if method_filter is None:
+                method_filter = f'{descriptor}'
+            else:
+                method_filter += f',{descriptor}'
+        command = 'ii~' + method_filter
+        result = None
+
+        # Use the first-matching result
+        for i in range(len(self._dex_list)):
+            r2 = self._get_r2(i)
+            result = r2.cmd(command)  # Method_id_items in dex file
+            if result:
+                break
+
+        method_list = []
+        for l in result.splitlines():
+            segments = re.split(' +', l)
+            rs_address = int(segments[1], 16)
+
+            signature = segments[4]
+            rs_classname = signature[:signature.index('.method.')]
+            rs_methodname = signature[signature.index(
+                '.method.')+8:signature.index('(')]
+            rs_descriptor = signature[signature.index('('):]
+
+            method_list.append(
+                MethodId(rs_address, rs_classname, rs_methodname, rs_descriptor))
+
+        return method_list
+
+    def get_function_bytecode(self, function):
         # TODO
         pass
 
