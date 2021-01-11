@@ -6,6 +6,8 @@ import zipfile
 import r2pipe
 from functools import cached_property, lru_cache
 
+from quark.Objects.bytecodeobject import BytecodeObject
+
 from .axml import AxmlReader
 
 
@@ -156,9 +158,34 @@ class Apkinfo(object):
 
         return method_list
 
-    def get_function_bytecode(self, function):
-        # TODO
-        pass
+    def get_function_bytecode(self, function: MethodId):
+        # TODO - add docstring
+
+        if not function.isAPI:
+
+            r2 = self._get_r2(function.dexindex)
+
+            instruct_flow = r2.cmdj(f'pdfj @ {function.address}')['ops']
+
+            if instruct_flow:
+
+                bytecode_obj = None
+                for ins in instruct_flow:
+                    ins_part = re.split('[ {},]+', ins['disasm'])
+
+                    # invoke-kind instruction may left method index at the last
+                    if len(ins_part) >= 5 and ins_part[-2] == ';':
+                        ins_part = ins_part[:-2]
+
+                    # Parameters only appear at the last
+                    if len(ins_part) >= 2 and not ins_part[-1].startswith('v'):
+                        bytecode_obj = BytecodeObject(
+                            ins_part[0], ins_part[1:-1], ins_part[-1])
+                    else:
+                        bytecode_obj = BytecodeObject(
+                            ins_part[0], ins_part[1:], None)
+
+                    yield bytecode_obj
 
     def check_valid(self):
         # TODO
