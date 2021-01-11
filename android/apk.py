@@ -14,8 +14,9 @@ class MethodId(object):
     Information about a method in a dex file.
     """
 
-    def __init__(self, address, classname, methodname, descriptor):
+    def __init__(self, address, dexindex, classname, methodname, descriptor):
         self.address = address
+        self.dexindex = dexindex
         self.classname = classname
         self.methodname = methodname
         self.descriptor = descriptor
@@ -126,8 +127,9 @@ class Apkinfo(object):
         result = None
 
         # Use the first-matching result
-        for i in range(len(self._dex_list)):
-            r2 = self._get_r2(i)
+        dexindex = -1
+        for dexindex in range(len(self._dex_list)):
+            r2 = self._get_r2(dexindex)
             result = r2.cmd(command)  # Method_id_items in dex file
             if result:
                 break
@@ -144,7 +146,7 @@ class Apkinfo(object):
             rs_descriptor = signature[signature.index('('):]
 
             method_list.append(
-                MethodId(rs_address, rs_classname, rs_methodname, rs_descriptor))
+                MethodId(rs_address, dexindex, rs_classname, rs_methodname, rs_descriptor))
 
         return method_list
 
