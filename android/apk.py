@@ -160,7 +160,7 @@ class Apkinfo(object):
         """
         Clean up all the extracted files.
         """
-        for dirpath, dirs, files in os.walk(self._tmp_dir, False):
+        for dirpath, _, files in os.walk(self._tmp_dir, False):
             for filename in files:
                 os.remove(os.path.join(dirpath, filename))
         os.rmdir(self._tmp_dir)
