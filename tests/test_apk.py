@@ -4,6 +4,8 @@ import os.path
 import pytest
 from android.apk import Apkinfo, MethodId
 
+from quark.Objects.bytecodeobject import BytecodeObject
+
 
 @pytest.fixture(scope="class")
 def apkinfo_obj():
@@ -123,6 +125,28 @@ class TestApkinfo(object):
 
         # result = func(descriptor='(Ljava/lang/Object;)Z')
         # TODO - r2 give a unreasonable output, need to check again.
+
+    def test_get_function_bytecode(self, apkinfo_obj):
+        # API functions
+        bytecode_list = apkinfo_obj.get_function_bytecode(
+            MethodId(0xF, 0, 'LaLa', 'La', 'Land', True))
+        for _ in bytecode_list:
+            assert False
+
+        # Non-API functions
+        bytecode_list = apkinfo_obj.get_function_bytecode(
+            MethodId(0x8ABC, 0, 'LaLa', 'La', 'Land', False))
+        assert [bytecode for bytecode in bytecode_list] == [
+            BytecodeObject('new-instance', ['v0'],
+                           'Landroid/app/ProgressDialog;'),
+            BytecodeObject(
+                'invoke-direct', ['v0', 'v2'], 'Landroid/app/ProgressDialog.<init>(Landroid/content/Context;)V'),
+            BytecodeObject(
+                'invoke-virtual', ['v0', 'v3'], 'Landroid/app/ProgressDialog.setTitle(Ljava/lang/CharSequence;)V'),
+            BytecodeObject(
+                'invoke-virtual', ['v0', 'v4'], 'Landroid/app/ProgressDialog.setMessage(Ljava/lang/CharSequence;)V'),
+            BytecodeObject('return-object', ['v0'], None),
+        ]
 
     def test_delete(self, apkinfo_obj):
         tmp = apkinfo_obj._tmp_dir
