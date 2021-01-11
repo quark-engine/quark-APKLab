@@ -14,12 +14,13 @@ class MethodId(object):
     Information about a method in a dex file.
     """
 
-    def __init__(self, address, dexindex, classname, methodname, descriptor):
+    def __init__(self, address, dexindex, classname, methodname, descriptor, isAPI=False):
         self.address = address
         self.dexindex = dexindex
         self.classname = classname
         self.methodname = methodname
         self.descriptor = descriptor
+        self.isAPI = isAPI
 
     def __eq__(self, obj):
         return isinstance(obj, MethodId) and obj.address == self.address and obj.classname == self.classname and obj.methodname == self.methodname and obj.descriptor == self.descriptor
@@ -123,7 +124,7 @@ class Apkinfo(object):
                 method_filter = f'{descriptor}'
             else:
                 method_filter += f',{descriptor}'
-        command = 'ii~' + method_filter
+        command = 'is~' + method_filter
         result = None
 
         # Use the first-matching result
@@ -137,16 +138,21 @@ class Apkinfo(object):
         method_list = []
         for l in result.splitlines():
             segments = re.split(' +', l)
-            rs_address = int(segments[1], 16)
+            rs_address = int(segments[2], 16)
 
-            signature = segments[4]
-            rs_classname = signature[:signature.index('.method.')]
+            signature = segments[-1]
+            imported = signature.startswith('imp.')
+            if imported:
+                rs_classname = signature[4:signature.index('.method.')]
+            else:
+                rs_classname = signature[:signature.index('.method.')]
+
             rs_methodname = signature[signature.index(
                 '.method.')+8:signature.index('(')]
             rs_descriptor = signature[signature.index('('):]
 
             method_list.append(
-                MethodId(rs_address, dexindex, rs_classname, rs_methodname, rs_descriptor))
+                MethodId(rs_address, dexindex, rs_classname, rs_methodname, rs_descriptor, imported))
 
         return method_list
 
