@@ -68,6 +68,14 @@ class Apkinfo(object):
         return r2
 
     @property
+    def filename(self):
+        return self._filename
+
+    @property
+    def filepath(self):
+        return self._filepath
+
+    @property
     def manifest(self):
         """
         Return a path to extracted manifest file.
@@ -217,3 +225,4 @@ class Apkinfo(object):
             for filename in files:
                 os.remove(os.path.join(dirpath, filename))
         os.rmdir(self._tmp_dir)
+
