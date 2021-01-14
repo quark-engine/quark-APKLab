@@ -133,7 +133,7 @@ class Apkinfo(object):
         dexindex = -1
         for dexindex in range(len(self._dex_list)):
             r2 = self._get_r2(dexindex)
-            result = r2.cmd(command)  # Method_id_items in dex file
+            result = r2.cmd(command)
             if result:
                 break
 
