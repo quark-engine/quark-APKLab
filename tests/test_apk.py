@@ -148,6 +148,16 @@ class TestApkinfo(object):
             BytecodeObject('return-object', ['v0'], None),
         ]
 
+        bytecode_list = apkinfo_obj.get_function_bytecode(
+            MethodId(0x994C, 0, 'LaLa', 'La', 'Land')
+        )
+        assert [bytecode for bytecode in bytecode_list] == [
+            BytecodeObject('iget-object', ['v0','v1'], 'Lcom/ku6/android/videobrowser/ChannelDetailAdapter;->coll Ljava/util/ArrayList;'),
+            BytecodeObject('invoke-virtual', ['v0','v2'], 'Ljava/util/ArrayList.get(I)Ljava/lang/Object;'),
+            BytecodeObject('move-result-object', ['v0'], None),
+            BytecodeObject('return-object', ['v0'], None)
+        ]
+
     def test_delete(self, apkinfo_obj):
         tmp = apkinfo_obj._tmp_dir
         apkinfo_obj.__del__()
