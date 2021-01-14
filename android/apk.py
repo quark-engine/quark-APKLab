@@ -158,6 +158,24 @@ class Apkinfo(object):
 
         return method_list
 
+    def find_upper_methods(self, method: MethodId):
+        # Currently use xref by radare2 only
+        # TODO - is this enough ?
+        r2 = self._get_r2(method.dexindex)
+
+        instruct_flow = r2.cmdj(f'pdj 1 @ {method.address}')['ops']
+
+        # by observation, array xrefs only appears at first instruction
+        inst = instruct_flow[1]
+        if 'xrefs' in inst:
+            for xref in inst['xrefs']:
+                func_name = r2.cmdj(f'pdfj~{{name}} @ {xref["addr"]}')
+
+                # TODO - Support multi-dex
+                # TODO - Convert to MethodId Object
+                # TODO - Unfinished
+                yield func_name
+
     def get_function_bytecode(self, function: MethodId):
         # TODO - add docstring
 
