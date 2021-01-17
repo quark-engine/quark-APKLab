@@ -129,6 +129,8 @@ class Apkinfo(object):
         """
         method_filter = None
         if classname or methodname:
+            if classname.endswith(';'):
+                classname = classname[:-1]
             method_filter = f'&{classname}.method.{methodname}'
             if methodname:
                 method_filter += '('
@@ -152,6 +154,11 @@ class Apkinfo(object):
         method_list = []
         for l in result.splitlines():
             segments = re.split(' +', l)
+            if segments[4] != 'FUNC':
+                continue
+
+            # TODO - use isj for gathering infomations 
+
             rs_address = int(segments[2], 16)
 
             signature = segments[-1]
@@ -160,6 +167,7 @@ class Apkinfo(object):
                 rs_classname = signature[4:signature.index('.method.')]
             else:
                 rs_classname = signature[:signature.index('.method.')]
+            rs_classname = rs_classname+';'
 
             rs_methodname = signature[signature.index(
                 '.method.')+8:signature.index('(')]

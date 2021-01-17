@@ -24,24 +24,24 @@ def get_md5(file_path):
 class TestMethodId(object):
 
     def test_eq(self):
-        truth = MethodId(0x0A, -1, 'Ljava/lang/Object',
+        truth = MethodId(0x0A, -1, 'Ljava/lang/Object;',
                          'toString', '()Ljava/lang/String;')
 
-        assert MethodId(0x0A, -1, 'Ljava/lang/Object', 'toString',
+        assert MethodId(0x0A, -1, 'Ljava/lang/Object;', 'toString',
                         '()Ljava/lang/String;') == truth
 
-        assert MethodId(0x0B, -1, 'Ljava/lang/Object', 'toString',
+        assert MethodId(0x0B, -1, 'Ljava/lang/Object;', 'toString',
                         '()Ljava/lang/String;') != truth
-        assert MethodId(0x0A, -1, 'Ljava/lang/String', 'toString',
+        assert MethodId(0x0A, -1, 'Ljava/lang/String;', 'toString',
                         '()Ljava/lang/String;') != truth
-        assert MethodId(0x0A, -1, 'Ljava/lang/Object', 'asString',
+        assert MethodId(0x0A, -1, 'Ljava/lang/Object;', 'asString',
                         '()Ljava/lang/String;') != truth
-        assert MethodId(0x0A, -1, 'Ljava/lang/Object', 'toString',
+        assert MethodId(0x0A, -1, 'Ljava/lang/Object;', 'toString',
                         '()Ljava/lang/Object;') != truth
 
     def test_hash(self):
-        assert hash(MethodId(0x0A, -1, 'Ljava/lang/Object', 'toString', '()Ljava/lang/String;')
-                    ) == hash(MethodId(0x0A, -1, 'Ljava/lang/Object', 'toString', '()Ljava/lang/String;'))
+        assert hash(MethodId(0x0A, -1, 'Ljava/lang/Object;', 'toString', '()Ljava/lang/String;')
+                    ) == hash(MethodId(0x0A, -1, 'Ljava/lang/Object;', 'toString', '()Ljava/lang/String;'))
 
 
 class TestApkinfo(object):
@@ -78,48 +78,48 @@ class TestApkinfo(object):
 
     def test_find_methods(self, apkinfo_obj):
         result = apkinfo_obj.find_methods(
-            classname='Ljava/util/ArrayList', methodname='add', descriptor='(Ljava/lang/Object;)Z')
+            classname='Ljava/util/ArrayList;', methodname='add', descriptor='(Ljava/lang/Object;)Z')
         assert set(result) == set((
-            MethodId(0x6DB0, -1, 'Ljava/util/ArrayList', 'add', '(Ljava/lang/Object;)Z'),))
+            MethodId(0x6DB0, -1, 'Ljava/util/ArrayList;', 'add', '(Ljava/lang/Object;)Z'),))
 
         result = apkinfo_obj.find_methods(
-            classname='Ljava/util/ArrayList', methodname='add')
+            classname='Ljava/util/ArrayList;', methodname='add')
         assert set(result) == set((
-            MethodId(0x6DB0, -1, 'Ljava/util/ArrayList', 'add', '(Ljava/lang/Object;)Z'),))
+            MethodId(0x6DB0, -1, 'Ljava/util/ArrayList;', 'add', '(Ljava/lang/Object;)Z'),))
 
         result = apkinfo_obj.find_methods(
             methodname='setNegativeButton', descriptor='(ILandroid/content/DialogInterface$OnClickListener;)Landroid/app/AlertDialog$Builder;')
-        assert set(result) == set((MethodId(0x48B0, -1, 'Landroid/app/AlertDialog$Builder', 'setNegativeButton',
+        assert set(result) == set((MethodId(0x48B0, -1, 'Landroid/app/AlertDialog$Builder;', 'setNegativeButton',
                                             '(ILandroid/content/DialogInterface$OnClickListener;)Landroid/app/AlertDialog$Builder;'),))
 
         result = apkinfo_obj.find_methods(
-            classname='Ljava/util/ArrayList', descriptor='(Ljava/lang/Object;)Z')
+            classname='Ljava/util/ArrayList;', descriptor='(Ljava/lang/Object;)Z')
         assert set(result) == set((
-            MethodId(0x6DB0, -1, 'Ljava/util/ArrayList', 'add', '(Ljava/lang/Object;)Z'),))
+            MethodId(0x6DB0, -1, 'Ljava/util/ArrayList;', 'add', '(Ljava/lang/Object;)Z'),))
 
-        result = apkinfo_obj.find_methods(classname='Ljava/util/ArrayList')
-        assert set(result) == set((MethodId(0x6DA8, -1, 'Ljava/util/ArrayList', '<init>', '()V'),
-                                   MethodId(0x6DB0, -1, 'Ljava/util/ArrayList',
+        result = apkinfo_obj.find_methods(classname='Ljava/util/ArrayList;')
+        assert set(result) == set((MethodId(0x6DA8, -1, 'Ljava/util/ArrayList;', '<init>', '()V'),
+                                   MethodId(0x6DB0, -1, 'Ljava/util/ArrayList;',
                                             'add', '(Ljava/lang/Object;)Z'),
-                                   MethodId(0x6DB8, -1, 'Ljava/util/ArrayList',
+                                   MethodId(0x6DB8, -1, 'Ljava/util/ArrayList;',
                                             'addAll', '(Ljava/util/Collection;)Z'),
                                    MethodId(
-            0x6DC0, -1, 'Ljava/util/ArrayList', 'clear', '()V'),
-            MethodId(0x6DC8, -1, 'Ljava/util/ArrayList',
+            0x6DC0, -1, 'Ljava/util/ArrayList;', 'clear', '()V'),
+            MethodId(0x6DC8, -1, 'Ljava/util/ArrayList;',
                      'get', '(I)Ljava/lang/Object;'),
-            MethodId(0x6DD0, -1, 'Ljava/util/ArrayList',
+            MethodId(0x6DD0, -1, 'Ljava/util/ArrayList;',
                      'remove', '(I)Ljava/lang/Object;'),
-            MethodId(0x6DD8, -1, 'Ljava/util/ArrayList', 'size', '()I')))
+            MethodId(0x6DD8, -1, 'Ljava/util/ArrayList;', 'size', '()I')))
 
         result = apkinfo_obj.find_methods(methodname='add')
         assert set(result) == set((
-            MethodId(0x4C40, -1, 'Landroid/view/Menu', 'add',
+            MethodId(0x4C40, -1, 'Landroid/view/Menu;', 'add',
                      '(IIILjava/lang/CharSequence;)Landroid/view/MenuItem;'),
-            MethodId(0x6DB0, -1, 'Ljava/util/ArrayList',
+            MethodId(0x6DB0, -1, 'Ljava/util/ArrayList;',
                      'add', '(Ljava/lang/Object;)Z'),
-            MethodId(0x6E20, -1, 'Ljava/util/List',
+            MethodId(0x6E20, -1, 'Ljava/util/List;',
                      'add', '(Ljava/lang/Object;)Z'),
-            MethodId(0x6E70, -1, 'Ljava/util/Vector',
+            MethodId(0x6E70, -1, 'Ljava/util/Vector;',
                      'add', '(Ljava/lang/Object;)Z')
         ))
 
