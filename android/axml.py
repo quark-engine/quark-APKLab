@@ -80,8 +80,8 @@ class AxmlReader(object):
         :raises AxmlException: the file is not in AXML format, or is broken. 
         """
         if struct_path is None:
-            directory = 'android/struct'
-            struct_path = os.path.join(directory, 'axml')
+            directory = os.path.dirname(__file__)
+            struct_path = os.path.join(directory, 'struct/axml')
 
         if not os.path.isfile(struct_path):
             raise AxmlException(
