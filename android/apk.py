@@ -185,7 +185,14 @@ class Apkinfo(object):
                 yield func_name
 
     def get_function_bytecode(self, function: MethodId):
-        # TODO - add docstring
+        """
+        Return the corresponding bytecode according to the address of function in the given MethodId object.
+
+        :param function: a MethodId object
+        :type function: MethodId
+        :yield: all bytecode instructions
+        :rtype: a generator of bytecodeobject in quark-engine
+        """
 
         if not function.isAPI:
 
@@ -197,19 +204,23 @@ class Apkinfo(object):
 
                 bytecode_obj = None
                 for ins in instruct_flow:
-                    ins_part = re.split('[ {},]+', ins['disasm'])
+                    mnemonic, args = ins['disasm'].split(
+                        maxsplit=1)  # Split into twe parts
 
                     # invoke-kind instruction may left method index at the last
-                    if len(ins_part) >= 5 and ins_part[-2] == ';':
-                        ins_part = ins_part[:-2]
+                    if mnemonic.startswith('invoke'):
+                        args = args[:args.rfind(' ;')]
+
+                    args = [arg.strip() for arg in re.split('[{},]+', args)]
+                    args = list(filter(bool, args))
 
                     # Parameters only appear at the last
-                    if len(ins_part) >= 2 and not ins_part[-1].startswith('v'):
+                    if len(args) > 0 and not args[-1].startswith('v'):
                         bytecode_obj = BytecodeObject(
-                            ins_part[0], ins_part[1:-1], ins_part[-1])
+                            mnemonic, args[:-1], args[-1])
                     else:
                         bytecode_obj = BytecodeObject(
-                            ins_part[0], ins_part[1:], None)
+                            mnemonic, args, None)
 
                     yield bytecode_obj
 
@@ -225,4 +236,3 @@ class Apkinfo(object):
             for filename in files:
                 os.remove(os.path.join(dirpath, filename))
         os.rmdir(self._tmp_dir)
-
