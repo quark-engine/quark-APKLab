@@ -167,22 +167,33 @@ class Apkinfo(object):
         return method_list
 
     def find_upper_methods(self, method: MethodId):
-        # Currently use xref by radare2 only
-        # TODO - is this enough ?
+        """
+        Return the corresponding xref methods from given method. 
+
+        :param method: a method object
+        :type method: MethodId
+        :yield: all xref methods
+        :rtype: a generator of MethodId objects
+        """
+        if not method.isAPI:
+
         r2 = self._get_r2(method.dexindex)
 
-        instruct_flow = r2.cmdj(f'pdj 1 @ {method.address}')['ops']
+            # By observation, xrefs only appears at first instruction
+            instruction = r2.cmdj(f'pdj 1 @ {method.address}')[0]
 
-        # by observation, array xrefs only appears at first instruction
-        inst = instruct_flow[1]
-        if 'xrefs' in inst:
-            for xref in inst['xrefs']:
-                func_name = r2.cmdj(f'pdfj~{{name}} @ {xref["addr"]}')
+            if 'xrefs' in instruction:
+                for xref in instruction['xrefs']:
+                    func_details = r2.cmdj(f'isj. @ {xref["addr"]}')
 
                 # TODO - Support multi-dex
-                # TODO - Convert to MethodId Object
-                # TODO - Unfinished
-                yield func_name
+                    signature = func_details['realname']
+                    classname = signature[:signature.index('.method.')]
+                    methodname = signature[signature.index(
+                        '.method.')+8:signature.index('(')]
+                    descriptor = signature[signature.index('('):]
+
+                    yield MethodId(func_details['vaddr'], 0, classname, methodname, descriptor, isAPI=func_details['is_imported'])
 
     def get_function_bytecode(self, function: MethodId):
         """

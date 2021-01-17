@@ -126,6 +126,23 @@ class TestApkinfo(object):
         # result = func(descriptor='(Ljava/lang/Object;)Z')
         # TODO - r2 give a unreasonable output, need to check again.
 
+    def test_find_upper_functions(self, apkinfo_obj):
+        method = MethodId(0x883C, 0, 'La', 'LaLa', 'Land', False)
+
+        assert set(apkinfo_obj.find_upper_methods(method)) == {
+            MethodId(0x9388, 0, 'Lcom/ku6/android/videobrowser/About_Activity',
+                     'onCreate', '(Landroid/os/Bundle;)V')
+        }
+
+        method = MethodId(0xE758, 0, 'La', 'LaLa', 'Land', False)
+
+        assert set(apkinfo_obj.find_upper_methods(method)) == {
+            MethodId(0xDDCC, 0, 'Lcom/ku6/android/videobrowser/Search_Activity$4',
+                     'onItemClick', '(Landroid/widget/AdapterView;Landroid/view/View;IJ)V', False),
+            MethodId(0xE7C0, 0, 'Lcom/ku6/android/videobrowser/Search_Activity',
+                     'setSearchKeyword', '(Ljava/lang/String;)V', False)
+        }
+
     def test_get_function_bytecode(self, apkinfo_obj):
         # API functions
         bytecode_list = apkinfo_obj.get_function_bytecode(
