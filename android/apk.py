@@ -115,6 +115,35 @@ class Apkinfo(object):
 
         return permission_list
 
+    def find_methods_by_addr(self, address):
+        """
+        Return a method object according to given address.
+
+        :param address: a address
+        :type address: number-like object
+        :return: a method object or None
+        :rtype: MethodId
+        """
+        if address < 0:
+            return None
+
+        r2 = self._get_r2(0)
+        section = r2.cmdj(f'iSj. @ {address}')
+        if section == None or not 'name' in section or (section['name'] != 'constpool' and section['name'] != 'code'):
+            return None
+
+        symbol = r2.cmdj(f'isj. @ {address}')
+        if symbol['type'] != 'FUNC':
+            return None
+
+        signature = symbol['realname']
+        classname = signature[:signature.index('.method.')] + ';'
+        methodname = signature[signature.index(
+            '.method.')+8:signature.index('(')]
+        descriptor = signature[signature.index('('):]
+
+        return MethodId(symbol['vaddr'], 0, classname, methodname, descriptor, symbol['is_imported'])
+
     def find_methods(self, classname='', methodname='', descriptor=''):
         """
         Find a list of methods matching given infomations.

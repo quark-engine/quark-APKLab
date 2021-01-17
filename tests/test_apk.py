@@ -76,6 +76,19 @@ class TestApkinfo(object):
             'com.android.launcher.permission.INSTALL_SHORTCUT'
         ])
 
+    def test_find_method_by_addr(self, apkinfo_obj):
+        # Illegal addresses
+        assert apkinfo_obj.find_methods_by_addr(-1) == None
+        assert apkinfo_obj.find_methods_by_addr(0) == None
+        assert apkinfo_obj.find_methods_by_addr(0xFFFFFFFF) == None
+
+        # API functions
+        assert apkinfo_obj.find_methods_by_addr(0x6DB0) == MethodId(0x6D98, 0, 'Ljava/text/SimpleDateFormat;',
+                                                                    '<init>', '(Ljava/lang/String;)V')
+        # Non-API functions
+        assert apkinfo_obj.find_methods_by_addr(0xE758) == MethodId(
+            0xE758, 0, 'Lcom/ku6/android/videobrowser/Search_Activity;', 'search', '(Ljava/lang/String;)V')
+
     def test_find_methods(self, apkinfo_obj):
         result = apkinfo_obj.find_methods(
             classname='Ljava/util/ArrayList;', methodname='add', descriptor='(Ljava/lang/Object;)Z')
