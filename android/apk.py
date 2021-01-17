@@ -76,6 +76,10 @@ class Apkinfo(object):
         return self._filepath
 
     @property
+    def filesize(self):
+        return os.path.getsize(self.filepath)
+
+    @property
     def manifest(self):
         """
         Return a path to extracted manifest file.
