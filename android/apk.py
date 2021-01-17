@@ -24,6 +24,9 @@ class MethodId(object):
         self.descriptor = descriptor
         self.isAPI = isAPI
 
+    def __repr__(self):
+        return f'<MethodId-address:{self.address} dexindex:{self.dexindex}, classname:{self.classname}, methodname:{self.methodname}, descriptor:{self.descriptor}>'
+
     def __eq__(self, obj):
         return isinstance(obj, MethodId) and obj.address == self.address and obj.classname == self.classname and obj.methodname == self.methodname and obj.descriptor == self.descriptor
 
