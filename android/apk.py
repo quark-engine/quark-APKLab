@@ -219,25 +219,15 @@ class Apkinfo(object):
         :yield: all xref methods
         :rtype: a generator of MethodId objects
         """
-        if not method.isAPI:
 
         r2 = self._get_r2(method.dexindex)
 
-            # By observation, xrefs only appears at first instruction
-            instruction = r2.cmdj(f'pdj 1 @ {method.address}')[0]
+        xrefs = r2.cmdj(f'axtj @ {method.address}')
 
-            if 'xrefs' in instruction:
-                for xref in instruction['xrefs']:
-                    func_details = r2.cmdj(f'isj. @ {xref["addr"]}')
-
-                # TODO - Support multi-dex
-                    signature = func_details['realname']
-                    classname = signature[:signature.index('.method.')]
-                    methodname = signature[signature.index(
-                        '.method.')+8:signature.index('(')]
-                    descriptor = signature[signature.index('('):]
-
-                    yield MethodId(func_details['vaddr'], 0, classname, methodname, descriptor, isAPI=func_details['is_imported'])
+        for xref in xrefs:
+            if xref['type'] != 'CALL':
+                continue
+            yield self.find_methods_by_addr(xref['fcn_addr'])
 
     def get_function_bytecode(self, function: MethodId):
         """

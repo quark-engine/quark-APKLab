@@ -140,19 +140,27 @@ class TestApkinfo(object):
         # TODO - r2 give a unreasonable output, need to check again.
 
     def test_find_upper_functions(self, apkinfo_obj):
-        method = MethodId(0x883C, 0, 'La', 'LaLa', 'Land', False)
+        # API functions
+        method = MethodId(0x6C98, 0, 'Ljava/lang/String;',
+                          'length', '()I', True)
 
         assert set(apkinfo_obj.find_upper_methods(method)) == {
-            MethodId(0x9388, 0, 'Lcom/ku6/android/videobrowser/About_Activity',
-                     'onCreate', '(Landroid/os/Bundle;)V')
+            MethodId(0xE7C0, 0, 'Lcom/ku6/android/videobrowser/Search_Activity;',
+                     'setSearchKeyword', '(Ljava/lang/String;)V'),
+            MethodId(0xF0B0, 0, 'Lcom/ku6/android/videobrowser/Search_Result_Activity;',
+                     'setSearchKeyword', '(Ljava/lang/String;)V'),
+            MethodId(68168, 0, 'Lcom/ku6/android/videobrowser/SplashActivity;',
+                     'getDataSource', '(Lcom/ku6/android/videobrowser/entity/Version;)V'),
         }
 
-        method = MethodId(0xE758, 0, 'La', 'LaLa', 'Land', False)
+        # Non-API functions
+        method = MethodId(
+            0xE758, 0, 'Lcom/ku6/android/videobrowser/Search_Activity', 'search', '(Ljava/lang/String;)V')
 
         assert set(apkinfo_obj.find_upper_methods(method)) == {
-            MethodId(0xDDCC, 0, 'Lcom/ku6/android/videobrowser/Search_Activity$4',
+            MethodId(0xDDCC, 0, 'Lcom/ku6/android/videobrowser/Search_Activity$4;',
                      'onItemClick', '(Landroid/widget/AdapterView;Landroid/view/View;IJ)V', False),
-            MethodId(0xE7C0, 0, 'Lcom/ku6/android/videobrowser/Search_Activity',
+            MethodId(0xE7C0, 0, 'Lcom/ku6/android/videobrowser/Search_Activity;',
                      'setSearchKeyword', '(Ljava/lang/String;)V', False)
         }
 
