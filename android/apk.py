@@ -22,18 +22,9 @@ class Bytecode(object):
     def __eq__(self, obj):
         return isinstance(obj, Bytecode) and self._mnemonic == obj._mnemonic and self._registers == obj._registers and self._parameter == obj._parameter
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
     def __hash__(self):
         return hash(self._mnemonic) ^ (hash(self._registers) < 2) ^ (hash(self._parameter) < 4)
 
->>>>>>> ecea2e9... Add bytecode class 3
-=======
-    def __hash__(self):
-        return hash(self._mnemonic) ^ (hash(self._registers)<2) ^ (hash(self._parameter)<4)
-
->>>>>>> ce8c96f... Add Bytecode class 2
     def __repr__(self):
         return f"<Bytecode-mnemonic:{self._mnemonic}, registers:{self._registers}, parameter:{self._parameter}>"
 
@@ -48,6 +39,7 @@ class Bytecode(object):
     @property
     def parameter(self):
         return self._parameter
+
 
 class MethodId(object):
     """
