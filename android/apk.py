@@ -54,13 +54,25 @@ class MethodId(object):
     Information about a method in a dex file.
     """
 
-    def __init__(self, address, dexindex, classname, methodname, descriptor, isAPI=False):
+    def __init__(self, address, dexindex, classname, methodname, descriptor, is_import=False):
         self.address = address
         self.dexindex = dexindex
         self.classname = classname
         self.methodname = methodname
         self.descriptor = descriptor
-        self.isAPI = isAPI
+        self.is_import = is_import
+
+    @property
+    def is_android_api(self):
+        # Packages found at https://developer.android.com/reference/packages
+        api_list = ['Landroid/', 'Lcom/google/android/', 'Ldalvik/', 'Ljava/', 'Ljavax/',
+                    'Ljunit/', 'Lorg/apache/', 'Lorg/json/', 'Lorg/w3c/', 'Lorg/xml/', 'Lorg/xmlpull/']
+
+        for api_prefix in api_list:
+            if self.classname.startswith(api_prefix):
+                return True
+
+        return False
 
     def __repr__(self):
         return f'<MethodId-address:{self.address} dexindex:{self.dexindex}, classname:{self.classname}, methodname:{self.methodname}, descriptor:{self.descriptor}>'
