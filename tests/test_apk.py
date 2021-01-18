@@ -2,9 +2,7 @@ import hashlib
 import os.path
 
 import pytest
-from android.apk import Apkinfo, MethodId
-
-from quark.Objects.bytecodeobject import BytecodeObject
+from android.apk import Apkinfo, MethodId, Bytecode
 
 
 @pytest.fixture(scope="class")
@@ -175,27 +173,27 @@ class TestApkinfo(object):
         bytecode_list = apkinfo_obj.get_function_bytecode(
             MethodId(0x8ABC, 0, 'LaLa', 'La', 'Land', False))
         assert [bytecode for bytecode in bytecode_list] == [
-            BytecodeObject('new-instance', ['v0'],
+            Bytecode('new-instance', ['v0'],
                            'Landroid/app/ProgressDialog;'),
-            BytecodeObject(
+            Bytecode(
                 'invoke-direct', ['v0', 'v2'], 'Landroid/app/ProgressDialog.<init>(Landroid/content/Context;)V'),
-            BytecodeObject(
+            Bytecode(
                 'invoke-virtual', ['v0', 'v3'], 'Landroid/app/ProgressDialog.setTitle(Ljava/lang/CharSequence;)V'),
-            BytecodeObject(
+            Bytecode(
                 'invoke-virtual', ['v0', 'v4'], 'Landroid/app/ProgressDialog.setMessage(Ljava/lang/CharSequence;)V'),
-            BytecodeObject('return-object', ['v0'], None),
+            Bytecode('return-object', ['v0'], None),
         ]
 
         bytecode_list = apkinfo_obj.get_function_bytecode(
             MethodId(0x994C, 0, 'LaLa', 'La', 'Land')
         )
         assert [bytecode for bytecode in bytecode_list] == [
-            BytecodeObject(
+            Bytecode(
                 'iget-object', ['v0', 'v1'], 'Lcom/ku6/android/videobrowser/ChannelDetailAdapter;->coll Ljava/util/ArrayList;'),
-            BytecodeObject(
+            Bytecode(
                 'invoke-virtual', ['v0', 'v2'], 'Ljava/util/ArrayList.get(I)Ljava/lang/Object;'),
-            BytecodeObject('move-result-object', ['v0'], None),
-            BytecodeObject('return-object', ['v0'], None)
+            Bytecode('move-result-object', ['v0'], None),
+            Bytecode('return-object', ['v0'], None)
         ]
 
     def test_delete(self, apkinfo_obj):

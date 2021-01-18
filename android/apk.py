@@ -6,10 +6,48 @@ import zipfile
 import r2pipe
 from functools import cached_property, lru_cache
 
-from quark.Objects.bytecodeobject import BytecodeObject
-
 from .axml import AxmlReader
 
+
+class Bytecode(object):
+    """
+    Reference to Quark Engine - https://quark-engine.rtfd.io
+    """
+
+    def __init__(self, mnemonic, registers, parameter):
+        self._mnemonic = mnemonic
+        self._registers = registers
+        self._parameter = parameter
+
+    def __eq__(self, obj):
+        return isinstance(obj, Bytecode) and self._mnemonic == obj._mnemonic and self._registers == obj._registers and self._parameter == obj._parameter
+
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+    def __hash__(self):
+        return hash(self._mnemonic) ^ (hash(self._registers) < 2) ^ (hash(self._parameter) < 4)
+
+>>>>>>> ecea2e9... Add bytecode class 3
+=======
+    def __hash__(self):
+        return hash(self._mnemonic) ^ (hash(self._registers)<2) ^ (hash(self._parameter)<4)
+
+>>>>>>> ce8c96f... Add Bytecode class 2
+    def __repr__(self):
+        return f"<Bytecode-mnemonic:{self._mnemonic}, registers:{self._registers}, parameter:{self._parameter}>"
+
+    @property
+    def mnemonic(self):
+        return self._mnemonic
+
+    @property
+    def registers(self):
+        return self._registers
+
+    @property
+    def parameter(self):
+        return self._parameter
 
 class MethodId(object):
     """
@@ -189,7 +227,7 @@ class Apkinfo(object):
             if segments[4] != 'FUNC':
                 continue
 
-            # TODO - use isj for gathering infomations 
+            # TODO - use isj for gathering infomations
 
             rs_address = int(segments[2], 16)
 
@@ -261,10 +299,10 @@ class Apkinfo(object):
 
                     # Parameters only appear at the last
                     if len(args) > 0 and not args[-1].startswith('v'):
-                        bytecode_obj = BytecodeObject(
+                        bytecode_obj = Bytecode(
                             mnemonic, args[:-1], args[-1])
                     else:
-                        bytecode_obj = BytecodeObject(
+                        bytecode_obj = Bytecode(
                             mnemonic, args, None)
 
                     yield bytecode_obj
