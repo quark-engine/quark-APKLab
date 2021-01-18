@@ -165,7 +165,6 @@ class AxmlReader(object):
             if map_size > self._axml_size - self._ptr:
                 raise AxmlException(
                     f'Map size should be {map_size} bytes rather than {self._axml_size - self._ptr} bytes.')
-                return
 
             self._ptr = self._ptr + map_size
             if self._ptr >= self._axml_size:
