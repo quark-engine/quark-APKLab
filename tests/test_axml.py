@@ -1,7 +1,6 @@
 import pytest
-import treelib
 import xml.etree.ElementTree as et
-from android.axml import AxmlReader, AxmlException, Res_value_type, RES_XML_START_ELEMENT_TYPE, RES_XML_END_ELEMENT_TYPE
+from quark.android.axml import AxmlReader, AxmlException, RES_XML_START_ELEMENT_TYPE, RES_XML_END_ELEMENT_TYPE
 
 
 @pytest.fixture(scope='module')

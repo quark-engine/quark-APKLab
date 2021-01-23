@@ -2,7 +2,7 @@ import hashlib
 import os.path
 
 import pytest
-from android.apk import Apkinfo, MethodId, Bytecode
+from quark.android.apk import Apkinfo, MethodId, Bytecode
 
 
 @pytest.fixture(scope="class")

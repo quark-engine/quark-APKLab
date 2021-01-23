@@ -3,77 +3,13 @@ import os.path
 import re
 import tempfile
 import zipfile
-import r2pipe
 from functools import cached_property, lru_cache
 
-from .axml import AxmlReader
+import r2pipe
 
-
-class Bytecode(object):
-    """
-    Reference to Quark Engine - https://quark-engine.rtfd.io
-    """
-
-    def __init__(self, mnemonic, registers, parameter):
-        self._mnemonic = mnemonic
-        self._registers = registers
-        self._parameter = parameter
-
-    def __eq__(self, obj):
-        return isinstance(obj, Bytecode) and self._mnemonic == obj._mnemonic and self._registers == obj._registers and self._parameter == obj._parameter
-
-    def __hash__(self):
-        return hash(self._mnemonic) ^ (hash(self._registers) < 2) ^ (hash(self._parameter) < 4)
-
-    def __repr__(self):
-        return f"<Bytecode-mnemonic:{self._mnemonic}, registers:{self._registers}, parameter:{self._parameter}>"
-
-    @property
-    def mnemonic(self):
-        return self._mnemonic
-
-    @property
-    def registers(self):
-        return self._registers
-
-    @property
-    def parameter(self):
-        return self._parameter
-
-
-class MethodId(object):
-    """
-    Information about a method in a dex file.
-    """
-
-    def __init__(self, address, dexindex, classname, methodname, descriptor, is_import=False):
-        self.address = address
-        self.dexindex = dexindex
-        self.classname = classname
-        self.methodname = methodname
-        self.descriptor = descriptor
-        self.is_import = is_import
-
-    @property
-    def is_android_api(self):
-        # Packages found at https://developer.android.com/reference/packages
-        api_list = ['Landroid/', 'Lcom/google/android/', 'Ldalvik/', 'Ljava/', 'Ljavax/',
-                    'Ljunit/', 'Lorg/apache/', 'Lorg/json/', 'Lorg/w3c/', 'Lorg/xml/', 'Lorg/xmlpull/']
-
-        for api_prefix in api_list:
-            if self.classname.startswith(api_prefix):
-                return True
-
-        return False
-
-    def __repr__(self):
-        return f'<MethodId-address:{self.address} dexindex:{self.dexindex}, classname:{self.classname}, methodname:{self.methodname}, descriptor:{self.descriptor}>'
-
-    def __eq__(self, obj):
-        return isinstance(obj, MethodId) and obj.address == self.address and obj.classname == self.classname and obj.methodname == self.methodname and obj.descriptor == self.descriptor
-
-    def __hash__(self):
-        return hash(self.address) ^ hash(self.classname) ^ hash(self.methodname) ^ hash(self.descriptor)
+from quark.android.axml import AxmlReader
+from quark.common.bytecode import Bytecode
+from quark.common.method import MethodId
 
 
 class Apkinfo(object):
@@ -171,7 +107,7 @@ class Apkinfo(object):
 
         r2 = self._get_r2(0)
         section = r2.cmdj(f'iSj. @ {address}')
-        if section == None or not 'name' in section or (section['name'] != 'constpool' and section['name'] != 'code'):
+        if section is None or 'name' not in section or (section['name'] != 'constpool' and section['name'] != 'code'):
             return None
 
         symbol = r2.cmdj(f'isj. @ {address}')
@@ -181,7 +117,7 @@ class Apkinfo(object):
         signature = symbol['realname']
         classname = signature[:signature.index('.method.')] + ';'
         methodname = signature[signature.index(
-            '.method.')+8:signature.index('(')]
+            '.method.') + 8:signature.index('(')]
         descriptor = signature[signature.index('('):]
 
         return MethodId(symbol['vaddr'], 0, classname, methodname, descriptor, symbol['is_imported'])
@@ -241,10 +177,10 @@ class Apkinfo(object):
                 rs_classname = signature[4:signature.index('.method.')]
             else:
                 rs_classname = signature[:signature.index('.method.')]
-            rs_classname = rs_classname+';'
+            rs_classname = rs_classname + ';'
 
             rs_methodname = signature[signature.index(
-                '.method.')+8:signature.index('(')]
+                '.method.') + 8:signature.index('(')]
             rs_descriptor = signature[signature.index('('):]
 
             method_list.append(
@@ -271,7 +207,7 @@ class Apkinfo(object):
                 continue
             yield self.find_methods_by_addr(xref['fcn_addr'])
 
-    def get_function_bytecode(self, function: MethodId):
+    def get_function_bytecode(self, function: MethodId, start_offset=-1, end_offset=-1):
         """
         Return the corresponding bytecode according to the address of function in the given MethodId object.
 
@@ -291,6 +227,11 @@ class Apkinfo(object):
 
                 bytecode_obj = None
                 for ins in instruct_flow:
+                    if ins['offset'] < start_offset:
+                        continue
+                    if ins['offset'] >= end_offset:
+                        break
+
                     mnemonic, args = ins['disasm'].split(
                         maxsplit=1)  # Split into twe parts
 
@@ -303,17 +244,16 @@ class Apkinfo(object):
 
                     # Parameters only appear at the last
                     if len(args) > 0 and not args[-1].startswith('v'):
-                        bytecode_obj = Bytecode(
-                            mnemonic, args[:-1], args[-1])
+                        bytecode_obj = Bytecode(ins['offset'],
+                                                mnemonic, args[:-1], args[-1])
                     else:
-                        bytecode_obj = Bytecode(
-                            mnemonic, args, None)
+                        bytecode_obj = Bytecode(ins['offset'],
+                                                mnemonic, args, None)
 
                     yield bytecode_obj
 
     def check_valid(self):
-        # TODO
-        return True
+        pass
 
     def __del__(self):
         """
