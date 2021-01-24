@@ -3,6 +3,7 @@ import os.path
 import re
 import tempfile
 import zipfile
+import hashlib
 from functools import cached_property, lru_cache
 
 import r2pipe
@@ -47,6 +48,14 @@ class Apkinfo(object):
         r2 = r2pipe.open(self._dex_list[index])
         r2.cmd('aa')
         return r2
+
+    @property
+    def md5(self):
+        md5 = hashlib.md5()
+        with open(self.apk_filepath, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                md5.update(chunk)
+        return md5.hexdigest()
 
     @property
     def filename(self):
