@@ -163,3 +163,7 @@ cython_debug/
 
 # Local History for Visual Studio Code
 .history/
+
+# Quark Enging
+.up_to_date.quark
+*.quark.log
