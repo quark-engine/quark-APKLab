@@ -49,6 +49,18 @@ class Apkinfo(object):
         r2.cmd('aa')
         return r2
 
+    def r2_escape(self, string: str) ->str:
+        escapeList = ['>']
+
+        result = ''
+        for char in string:
+            if char in escapeList:
+                result = result + '\\'
+            
+            result = result + char
+
+        return result
+
     @property
     def md5(self):
         md5 = hashlib.md5()
@@ -150,7 +162,7 @@ class Apkinfo(object):
         if classname or methodname:
             if classname.endswith(';'):
                 classname = classname[:-1]
-            method_filter = f'&{classname}.method.{methodname}'
+            method_filter = f'&{classname}.method.{self.r2_escape(methodname)}'
             if methodname:
                 method_filter += '('
 
@@ -214,7 +226,8 @@ class Apkinfo(object):
         for xref in xrefs:
             if xref['type'] != 'CALL':
                 continue
-            yield self.find_methods_by_addr(xref['fcn_addr'])
+            if 'fcn_addr' in xref:
+                yield (xref['fcn_addr'], self.find_methods_by_addr(xref['fcn_addr']))
 
     def get_function_bytecode(self, function: MethodId, start_offset=-1, end_offset=-1):
         """
@@ -268,7 +281,10 @@ class Apkinfo(object):
         """
         Clean up all the extracted files.
         """
-        for dirpath, _, files in os.walk(self._tmp_dir, False):
-            for filename in files:
-                os.remove(os.path.join(dirpath, filename))
-        os.rmdir(self._tmp_dir)
+        try:
+            for dirpath, _, files in os.walk(self._tmp_dir, False):
+                for filename in files:
+                        os.remove(os.path.join(dirpath, filename))
+            os.rmdir(self._tmp_dir)
+        except:
+            pass
