@@ -316,4 +316,7 @@ class AxmlReader(object):
         return result
 
     def __del__(self):
-        self._r2.quit()
+        try:
+            self._r2.quit()
+        except:
+            pass
