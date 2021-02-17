@@ -1,8 +1,9 @@
+from quark.core.analysis import QuarkAnalysis
 import click
 import logging
 import os
 
-from quark.core.quark import Quark;
+from quark.core.quark import Quark
 from quark.core.rule import QuarkRule
 
 
@@ -31,15 +32,15 @@ def main(apk, rule):
 
     for rule_file in get_rules_from_directory(rule):
         rule = QuarkRule(rule_file)
-
-        logging.info(f'Analysing {rule.crime}')
-        quark.analysis(rule)
-
-    passed_tasks = quark.analysis_report.passed_tasks
-    for rule in passed_tasks.keys():
-        for task in passed_tasks[rule]:
-            logging.info(f'{rule.crime:<80} {task.reached_stage}')
-
+        #logging.info(f'Analysing {rule.crime}')
+        try:
+            quark.analysis(rule)
+        except Exception as e:
+            logging.error(e)
+        else:
+            max_stage = max([task.reached_stage for task in quark.analysis_report.passed_tasks[rule]])
+            logging.info(f'Crime @ {rule.crime:<80} {max_stage}')
+                
 
 if __name__ == '__main__':
     main()

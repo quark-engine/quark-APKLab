@@ -1,3 +1,4 @@
+import logging
 import os
 import os.path
 import re
@@ -226,8 +227,11 @@ class Apkinfo(object):
         for xref in xrefs:
             if xref['type'] != 'CALL':
                 continue
+
             if 'fcn_addr' in xref:
                 yield (xref['fcn_addr'], self.find_methods_by_addr(xref['fcn_addr']))
+            else:
+                logging.info(f'Key fcn_addr was not found at {method}.')
 
     def get_function_bytecode(self, function: MethodId, start_offset=-1, end_offset=-1):
         """
