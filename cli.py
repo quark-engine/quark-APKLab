@@ -32,9 +32,13 @@ def main(apk, rule):
     for rule_file in get_rules_from_directory(rule):
         rule = QuarkRule(rule_file)
 
+        logging.info(f'Analysing {rule.crime}')
         quark.analysis(rule)
-        logging.info(
-            f'{rule.crime:<80} {quark.analysis_report.get_rule_passed(rule):>2}')
+
+    passed_tasks = quark.analysis_report.passed_tasks
+    for rule in passed_tasks.keys():
+        for task in passed_tasks[rule]:
+            logging.info(f'{rule.crime:<80} {task.reached_stage}')
 
 
 if __name__ == '__main__':
