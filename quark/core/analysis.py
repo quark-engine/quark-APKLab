@@ -1,3 +1,4 @@
+from collections import defaultdict, namedtuple
 from quark.core.rule import QuarkRule
 
 
@@ -8,38 +9,19 @@ CONF_STAGE_3 = 3
 CONF_STAGE_4 = 4
 CONF_STAGE_5 = 5
 
-PROC_STAGE_APIINFO = -1
-PROC_STAGE_COMMON_PARENT = -2
-PROC_STAGE_SEQUENCE = -3
-PROC_STAGE_REGISTER = -4
+Sequence = namedtuple(
+    'Sequence', 'parent, first_api_tree, second_api_tree')
 
-class Task(object):
+class Behavior:
+    __slots__=['related_rule','reached_stage','api_objects','sequence','registers']
 
-    __slots__ = [
-        'related_rule',
-        'reached_stage',
-        'process_stage',
-
-        'permissions',
-        'native_apis',
-        'first_tree',
-        'second_tree',
-        'parent',
-        'sequence',
-        'used_registers'
-        ]
-
-    def __init__(self, rule: QuarkRule):
+    def __init__(self, rule:QuarkRule):
         self.related_rule = rule
-        self.process_stage = PROC_STAGE_APIINFO
-
-        self.permissions = None
-        self.native_apis = None
-        self.first_tree = None
-        self.second_tree = None
-        self.parent = None
+        
+        self.reached_stage = CONF_STAGE_NONE
+        self.api_objects = None
         self.sequence = None
-        self.used_registers = None
+        self.registers = None
 
 class QuarkAnalysis(object):
 
@@ -48,27 +30,26 @@ class QuarkAnalysis(object):
         self._score_sum = 0
         self._weighted_sum = 0
 
-    def add_rule(self, rule) -> Task:
-        assert rule not in self._rule_results
+    def add_rule(self, rule) -> Behavior:
+        if rule in self._rule_results:
+            return None
         # Permissions, Native Apis, Sequences, Used Registers
-        task = Task(rule)
+        behavior = Behavior(rule)
         self._rule_results[rule] = []
         self._score_sum += rule.yscore
 
-        return task
+        return behavior
 
-    def set_passed(self, task, level):
+    def set_passed(self, behavior, level):
         assert CONF_STAGE_NONE <= level <= CONF_STAGE_5
-        task.reached_stage = level
-        task.process_stage = None
+        behavior.reached_stage = level
 
-        rule = task.related_rule
+        rule = behavior.related_rule
         assert rule in self._rule_results
-
-        self._rule_results[rule].append(task)
+        self._rule_results[rule].append(behavior)
 
     @property
-    def passed_tasks(self):
+    def passed_behaviors(self):
         return self._rule_results
 
     @property

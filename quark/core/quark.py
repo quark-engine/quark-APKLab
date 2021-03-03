@@ -1,10 +1,14 @@
+import logging
+
 from copy import copy
 from typing import Sequence
 from treelib import Tree
 
 from quark.android.apk import Apkinfo
 from quark.common.method import MethodId
-from quark.core.analysis import PROC_STAGE_APIINFO, PROC_STAGE_COMMON_PARENT, PROC_STAGE_REGISTER, PROC_STAGE_SEQUENCE, QuarkAnalysis, CONF_STAGE_NONE, CONF_STAGE_2, CONF_STAGE_3, CONF_STAGE_4, CONF_STAGE_5, CONF_STAGE_1
+from quark.core.analysis import (CONF_STAGE_1, CONF_STAGE_2, CONF_STAGE_3,
+                                 CONF_STAGE_4, CONF_STAGE_5, CONF_STAGE_NONE,
+                                 Behavior, QuarkAnalysis, Sequence)
 from quark.core.rule import QuarkRule
 
 MAX_REG_COUNT = 257
@@ -17,63 +21,34 @@ class Quark:
     def __init__(self, apk):
         self.apkinfo = Apkinfo(apk)
         self._report = QuarkAnalysis()
+        self._apkinfo_stack = []
+        self._sequence_stack = []
+        self._register_stack = []
 
     @property
-    def analysis_report(self):
+    def report(self):
         return self._report
 
-    def find_common_parent(self, first: MethodId, second: MethodId, search_depth=3):
-        assert not first == second
+    def get_invoke_tree(self, method: MethodId, search_depth=3):
+        tree = Tree(deep=search_depth, identifier=method.address)
 
-        first_tree, second_tree = (
-            Tree(deep=search_depth), Tree(deep=search_depth))
-        first_tree.create_node(identifier=first.address, data=None)
-        second_tree.create_node(identifier=second.address, data=None)
+        # Parent method with invoke address list
+        tree.create_node(identifier=method, data=[])
 
-        second_leaves = {second}
-        first_leaves = {first}
+        for _ in range(search_depth):
+            for leaf in tree.leaves():
+                uppers = self.apkinfo.find_upper_methods(leaf.identifier)
+                for addr, upper in uppers:
+                    if not tree.contains(upper):
+                        node = tree.create_node(
+                            identifier=upper, data=[addr], parent=leaf)
+                    else:
+                        tree.get_node(upper).data.append(addr)
 
-        parents = set()
-        while not search_depth == 0 and (first_leaves or second_leaves):
-            # Check if common parent presents
-            for method in second_leaves:
-                if first_tree.contains(method.address):
-                    parents.add(method)
-            for method in first_leaves:
-                if second_tree.contains(method.address):
-                    parents.add(method)
+        return tree
 
-            second_leaves.difference_update(parents)
-            first_leaves.difference_update(parents)
-
-            # Expand trees
-            second_next_leaves = set()
-            for method in second_leaves:
-                for addr, upper in self.apkinfo.find_upper_methods(method):
-                    if not second_tree.contains(upper.address):
-                        second_tree.create_node(
-                            identifier=upper.address, data=addr, parent=method.address)
-                    second_next_leaves.add(upper)
-            second_leaves = second_next_leaves
-
-            first_next_leaves = set()
-            for method in first_leaves:
-                for addr, upper in self.apkinfo.find_upper_methods(method):
-                    if not first_tree.contains(upper.address):
-                        first_tree.create_node(
-                            identifier=upper.address, data=addr, parent=method.address)
-                    first_next_leaves.add(upper)
-            first_leaves = first_next_leaves
-
-            search_depth = search_depth-1
-
-        return first_tree, second_tree, parents
-
-    def check_register_in_method(self, method: MethodId, registers, start_offset=-1, end_offset=-1):
-        """
-        * end_offset_included
-        """
-
+    def check_register_in_method(self, method: MethodId, registers, start_offset=-1, end_offset=-1, reset_offsets=None):
+        old_registers = copy(registers)
         # Fetch target ranger of instructions
         instructions = [ins for ins in self.apkinfo.get_function_bytecode(
             method, start_offset, end_offset)]
@@ -102,6 +77,12 @@ class Quark:
         for ins in instructions:
             # print(f'{ins.address} {str(ins)}')
 
+            # Combine two sets of registers if a reset offset comes
+            if ins.address in reset_offsets:
+                for reg_index in range(MAX_REG_COUNT):
+                    registers[reg_index] = registers[reg_index] ^ old_registers[reg_index]
+                continue
+
             prefix = ins.mnemonic.split('-')[0]
 
             # Transition
@@ -113,9 +94,14 @@ class Quark:
                         registers[reg_index] = True
 
             elif prefix in TRANSITION_TYPE_2:
-                if registers[ins.registers[0]]:
+                if len(ins.registers) > 1:
+                    if registers[ins.registers[0]]:
+                        registers[ins.registers[0]] = False
+                        registers[ins.registers[1]] = True
+                elif registers[ins.registers[0]]:
+                    # move-result
                     registers[ins.registers[0]] = False
-                    registers[ins.registers[1]] = True
+                    registers[RETURN_REG_INDEX] = True
 
             elif prefix in NEW_TYPE:
                 for reg_index in ins.registers:
@@ -126,194 +112,194 @@ class Quark:
 
         return registers
 
-    def check_register_upward(self, method: MethodId, invoke_path: list, parent: MethodId, registers):
-        # Currently must have a least one parent (the common parent)
-        assert len(invoke_path) > 1
-        invoke_path.pop()
+    def check_register_downward(self, invoke_nodes: list, registers):
+        # Check registers reversely from common parent to api
+        if len(invoke_nodes) <= 2:
+            return registers
+        invoke_nodes.reverse()
+        invoke_nodes.pop()  # Pop out the api
 
-        while any(registers) and invoke_path:
-            direct_invoke_address, direct_parent = invoke_path.pop()
+        while len(invoke_nodes) > 2 and any(registers):
+            current_node = invoke_nodes.pop()
+            first_address = min(current_node.data)
             self.check_register_in_method(
-                direct_parent, registers, -1, direct_invoke_address)
+                current_node.identifier, registers, start_offset=first_address, reset_offsets=current_node.data)
 
         return registers
 
-    def check_register_downward(self, method: MethodId, invoke_path: list, parent: MethodId, registers):
-        assert len(invoke_path) > 1
-        invoke_path.pop()
+    def check_register_upward(self, invoke_nodes: list, registers):
+        # Check registers reversely from api to common parent
+        if len(invoke_nodes) <= 2:
+            return registers
+        invoke_nodes.pop()  # Popup api node
 
-        invoke_path.reverse()
-
-        invoke_address, _ = invoke_path.pop()
-        while any(registers) and invoke_path:
-            next_invoke_address, child_method = invoke_path[-1]
-            registers = self.check_register_in_method(
-                child_method, registers, invoke_address, -1)
-            invoke_address = next_invoke_address
+        while len(invoke_nodes) > 2 and any(registers):
+            current_node = invoke_nodes.pop()
+            least_address = max(current_node.data)
+            self.check_register_in_method(
+                current_node.identifier, registers, end_offset=least_address, reset_offsets=current_node.data)
 
         return registers
 
-    def check_register(self, first: MethodId, first_tree: Tree, second: MethodId, second_tree: Tree, parent: MethodId,
-                       registers=None):
-        first_node = [first_tree.get_node(
-            method_address) for method_address in first_tree.rsearch(parent.address)]
+    def check_register(self, sequence: Sequence, registers=None):
+        first_tree = sequence.first_api_tree
+        second_tree = sequence.second_api_tree
+        parent = sequence.parent
 
-        second_node = [second_tree.get_node(method_address) for method_address in
-                       second_tree.rsearch(parent.address)]
-        # invoke_address = [..., invoke_address2, invoke_address1, None]
+        first_node = [first_tree.get_node(method)
+                      for method in first_tree.rsearch(parent)]
+        second_node = [second_tree.get_node(method)
+                       for method in second_tree.rsearch(parent)]
 
         if registers is None:
             # Setup the registers and adjust end_offset
-            second_direct_invoke_address, second_direct_invoke_method = second_node[
-                -2].data, self.apkinfo.find_methods_by_addr(
-                second_node[-2].identifier)
-            start_instructions = list(self.apkinfo.get_function_bytecode(second_direct_invoke_method,
-                                                                         second_direct_invoke_address,
-                                                                         second_direct_invoke_address + 1))[0]
+            upper_node = second_node[-2]
+            least_address = max(upper_node.data)
+
+            try:
+                initial_instruction = next(self.apkinfo.get_function_bytecode(
+                    upper_node.identifier, least_address, least_address + 1))
+            except StopIteration as s:
+                logging.warning(
+                    f'Unable fetch bytecode at {least_address} with {upper_node.identifier}, skip this scanning.')
+                return [False for _ in range(MAX_REG_COUNT)]
 
             registers = [False for _ in range(MAX_REG_COUNT)]
-            for reg_index in start_instructions.registers:
+            for reg_index in initial_instruction.registers:
                 registers[reg_index] = True
 
-        first_last_invoke_address = first_node[0].data
-        second_last_invoke_address = second_node[0].data
+        first_invoke_for_first_api = min(first_tree.get_node(parent).data)
 
-        second_path = [(node.data, self.apkinfo.find_methods_by_addr(
-            node.identifier)) for node in second_node]
+        reset_offsets = second_tree.get_node(parent).data
+        least_invoke_for_second_api = max(reset_offsets)
 
-        registers = self.check_register_upward(
-            second, second_path, parent, registers)
-        # del second_path
+        if(first_invoke_for_first_api >= least_invoke_for_second_api):
+            logging.error(
+                f'Address for first api is less than address for second api @ {parent}')
+            return [False]
 
-        registers = self.check_register_in_method(parent, registers, first_last_invoke_address,
-                                                  second_last_invoke_address)
-
-        first_path = [(node.data, self.apkinfo.find_methods_by_addr(
-            node.identifier)) for node in first_node]
-        registers = self.check_register_downward(
-            first, first_path, parent, registers)
-        # del first_path
+        registers = self.check_register_upward(second_node, registers)
+        registers = self.check_register_in_method(
+            parent, registers, first_invoke_for_first_api, least_invoke_for_second_api, reset_offsets)
+        registers = self.check_register_downward(first_node, registers)
 
         return registers
 
-    def analysis(self, rule: QuarkRule):
-        # Log rule
-        task_stack = [self._report.add_rule(rule)]
+    def run_apkinfo_phase(self, behavior: Behavior):
+        rule = behavior.related_rule
 
-        while task_stack:
-            task = task_stack.pop()
-            rule = task.related_rule
+        # Stage 1 - Check Permission
+        passed_permissions = (
+            permission for permission in rule.x1_permission if permission in self.apkinfo.permissions)
 
-            if task.process_stage == PROC_STAGE_APIINFO:
-                # Stage 1 - Check Permission
-                passed_permissions = (
-                    permission for permission in rule.x1_permission if permission in self.apkinfo.permissions)
+        if len(list(passed_permissions)) != len(rule.x1_permission):
+            return CONF_STAGE_NONE
 
-                task.permissions = rule.x1_permission
-                
-                if len(rule.x1_permission) != len(task.permissions):
-                    self._report.set_passed(task, CONF_STAGE_NONE)
-                    continue
+        api_object = []
+        for api in rule.x2n3n4_comb:
+            methods = self.apkinfo.find_methods(
+                api['class'], api['method'], api['descriptor'])
+            if methods:
+                api_object.append(methods[0])
 
-                api_object = []
-                for api in rule.x2n3n4_comb:
-                    methods = self.apkinfo.find_methods(
-                        api['class'], api['method'], api['descriptor'])
-                    if methods:
-                        api_object.append(methods[0])
+        behavior.api_objects = api_object
 
-                task.native_apis = api_object
+        # Stage 2 - All native apis exist
+        return CONF_STAGE_1 if len(api_object) < len(rule.x2n3n4_comb) else CONF_STAGE_2
 
-                if len(api_object) == 0:
-                    self._report.set_passed(task, CONF_STAGE_1)
-                    continue
+    def run_sequence_phase(self, behavior: Behavior):
+        # Check if apis exist in the same call graph
+        trees = [self.get_invoke_tree(api)
+                 for api in behavior.api_objects]  # tree list
 
-                # Stage 2 - Contain native api
-                if len(api_object) < len(rule.x2n3n4_comb):
-                    self._report.set_passed(task, CONF_STAGE_2)
-                    continue
-                # Stage 3 - All native apis exist
-                task.process_stage = PROC_STAGE_COMMON_PARENT
-                
-            if task.process_stage == PROC_STAGE_COMMON_PARENT:
-                # Check if apis exist in the same call graph
-                # TODO - make invoke.address as identifier of tree node, method address stores at the data property of nodes.
-                #        To support same method with different child.
-                task.first_tree, task.second_tree, parents = self.find_common_parent(
-                    api_object[0], api_object[1])
+        # Test each combination of trees
+        for first_index in range(len(trees)):
+            for second_index in range(first_index+1, len(trees)):
+                first_tree = trees[first_index]
+                second_tree = trees[second_index]
 
-                if not parents:
-                    self._report.set_passed(task, CONF_STAGE_3)
-                    continue
+                first_all_methods = {
+                    node.identifier for node in first_tree.all_nodes()}
+                second_all_methods = {
+                    node.identifier for node in second_tree.all_nodes()}
+                common_parents = first_all_methods.intersection(
+                    second_all_methods)
 
-                task.process_stage = PROC_STAGE_SEQUENCE
-                for parent in parents:
-                    cloned_task = copy(task)
-                    cloned_task.parent = parent
-
-                    task_stack.append(cloned_task)
-
-                continue
-
-            if task.process_stage == PROC_STAGE_SEQUENCE:
+                # Stage 3 - Check combination
                 # Stage 4 - Check sequence
-                first_invoke_address = [task.first_tree.get_node(method_addr).data for method_addr in
-                                    task.first_tree.rsearch(task.parent.address)]
-                first_invoke_address.pop()  # Drop None at the last
-                second_invoke_address = [task.second_tree.get_node(method_addr).data for method_addr in
-                                        task.second_tree.rsearch(task.parent.address)]
-                second_invoke_address.pop()  # Drop None at the last
+                # Check invoke address
+                passing_3_list = []
+                passing_4_list = []
+                for parent in common_parents:
+                    # Test sequence of invoke addresses from two methods
+                    first_address_for_first_method = min(
+                        first_tree.get_node(parent).data)
+                    least_address_for_second_method = max(
+                        second_tree.get_node(parent).data)
 
-                for first_addr, second_addr in zip(first_invoke_address, second_invoke_address):
-                    if first_addr > second_addr:
-                        break
+                    cloned_behavior = copy(behavior)
+                    cloned_behavior.sequence = Sequence(
+                        parent, trees[first_index], trees[second_index])
+                    if first_address_for_first_method < least_address_for_second_method:
+                        passing_4_list.append(cloned_behavior)
+                    else:
+                        passing_3_list.append(cloned_behavior)
 
-                    elif first_addr < second_addr:
-                        task.process_stage = PROC_STAGE_REGISTER
-                        break
+        return passing_3_list, passing_4_list
 
-                # Check if task matches stage 4
-                if task.process_stage != PROC_STAGE_REGISTER:
-                    self._report.set_passed(task, CONF_STAGE_3)
+    def run_register_phase(self, behavior: Behavior):
+        # Stage 5 - Handling the same register
+        registers = self.check_register(behavior.sequence)
+
+        if any(registers):
+            critical_indexes = [
+                index for index, is_critical in enumerate(registers) if is_critical]
+
+            behavior.registers = critical_indexes
+            return CONF_STAGE_5
+        else:
+            return CONF_STAGE_4
+
+    def analysis_rule(self, rule: QuarkRule):
+        self.add_rule(rule)
+        self.run_analysis()
+
+    def add_rule(self, rule: QuarkRule):
+        behavior = self._report.add_rule(rule)
+        if behavior is None:
+            return False
+
+        self._apkinfo_stack.append(behavior)
+        return True
+
+    def run_analysis(self):
+        while self._apkinfo_stack or self._register_stack:
+            if self._apkinfo_stack:
+                behavior = self._apkinfo_stack.pop()
+                result = self.run_apkinfo_phase(behavior)
+
+                if result != CONF_STAGE_2:
+                    self._report.set_passed(behavior, result)
                     continue
 
-                # # Record stage 4 result
-                # result = []
-                # for parent in parents:
-                #     first_node = [first_tree.get_node(
-                #         method_addr) for method_addr in first_tree.rsearch(parent.address)]
-                #     second_node = [second_tree.get_node(
-                #         method_addr) for method_addr in second_tree.rsearch(parent.address)]
+                passing_3_list, passing_4_list = self.run_sequence_phase(
+                    behavior)
 
-                #     first_method = [self.apkinfo.find_methods_by_addr(
-                #         node.identifer) for node in first_node]
-                #     second_method = [self.apkinfo.find_methods_by_addr(
-                #         node.identifer) for node in second_node]
+                if passing_3_list or passing_4_list:
+                    for passing in passing_3_list:
+                        self._report.set_passed(passing, CONF_STAGE_3)
 
-                #     first_result = [(self.apkinfo.get_function_bytecode(
-                #         method, node.data, node.data+26), method) for method, node in zip(first_method, first_node)]
-                #     second_result = [(self.apkinfo.get_function_bytecode(
-                #         method, node.data, node.data+26), method) for method, node in zip(second_method, second_node)]
+                    self._register_stack.extend(passing_4_list)
+                    # for passing in passing_4_list:
+                    #     self._report.set_passed(passing, CONF_STAGE_4)
 
-                #     result.append(first_result, second_result)
-
-
-            if task.process_stage == PROC_STAGE_REGISTER:
-                # Stage 5 - Handling the same register
-                # Currently scan the first parents.
-                permissions = task.permissions
-                try:
-                    registers = self.check_register(permissions[0], task.first_tree, permissions[1], task.second_tree, task.parent)
-                except Exception:
-                    pass
-
-                if any(registers):
-                    critical_indexes = [index for index, is_critical in enumerate(registers) if is_critical]
-                    
-                    task.used_registers = critical_indexes
-                    self._report.set_passed(task, CONF_STAGE_5)
                 else:
-                    self._report.set_passed(task, CONF_STAGE_4)
+                    self._report.set_passed(behavior, CONF_STAGE_2)
+
+            if self._register_stack:
+                behavior = self._register_stack.pop()
+                result = self.run_register_phase(behavior)
+                self._report.set_passed(behavior, result)
 
     def get_json_report(self):
         return {

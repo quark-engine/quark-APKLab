@@ -115,7 +115,7 @@ class Apkinfo(object):
 
         return permission_list
 
-    def find_methods_by_addr(self, address):
+    def find_methods_by_addr(self, dex_index, address):
         """
         Return a method object according to given address.
 
@@ -127,7 +127,7 @@ class Apkinfo(object):
         if address < 0:
             return None
 
-        r2 = self._get_r2(0)
+        r2 = self._get_r2(dex_index)
         section = r2.cmdj(f'iSj. @ {address}')
         if section is None or 'name' not in section or (section['name'] != 'constpool' and section['name'] != 'code'):
             return None
@@ -142,9 +142,9 @@ class Apkinfo(object):
             '.method.') + 8:signature.index('(')]
         descriptor = signature[signature.index('('):]
 
-        return MethodId(symbol['vaddr'], 0, classname, methodname, descriptor, symbol['is_imported'])
+        return MethodId(symbol['vaddr'], dex_index, classname, methodname, descriptor, symbol['is_imported'])
 
-    def find_methods(self, classname='', methodname='', descriptor=''):
+    def find_methods(self, classname='', methodname='', descriptor='', dex_index=None):
         """
         Find a list of methods matching given infomations.
 
@@ -156,6 +156,8 @@ class Apkinfo(object):
         :type methodname: str, optional
         :param descriptor: Descriptor of method for matching, defaults to ''
         :type descriptor: str, optional
+        :param dex_index: Indicate where the given method is, defaults to None
+        :type dex_index: non-negative number, optional
         :return: a list of methods
         :rtype: list of MethodId objects
         """
@@ -175,13 +177,19 @@ class Apkinfo(object):
         command = 'is~' + method_filter
         result = None
 
-        # Use the first-matching result
-        dexindex = -1
-        for dexindex in range(len(self._dex_list)):
-            r2 = self._get_r2(dexindex)
+        if not dex_index:
+            dex_index = -1
+            for dex_index in range(len(self._dex_list)):
+                r2 = self._get_r2(dex_index)
+                result = r2.cmd(command)
+                if result:
+                    break
+        else:
+            r2 = self._get_r2(dex_index)
             result = r2.cmd(command)
-            if result:
-                break
+
+        if not result:
+            return []
 
         method_list = []
         for l in result.splitlines():
@@ -206,7 +214,7 @@ class Apkinfo(object):
             rs_descriptor = signature[signature.index('('):]
 
             method_list.append(
-                MethodId(rs_address, dexindex, rs_classname, rs_methodname, rs_descriptor, imported))
+                MethodId(rs_address, dex_index, rs_classname, rs_methodname, rs_descriptor, imported))
 
         return method_list
 
@@ -228,10 +236,10 @@ class Apkinfo(object):
             if xref['type'] != 'CALL':
                 continue
 
-            if 'fcn_addr' in xref:
-                yield (xref['fcn_addr'], self.find_methods_by_addr(xref['fcn_addr']))
+            if 'from' in xref:
+                yield (xref['from'], self.find_methods_by_addr(method.dexindex, xref['from']))
             else:
-                logging.info(f'Key fcn_addr was not found at {method}.')
+                logging.debug(f'Key from was not found at searching upper methods for {method}.')
 
     def get_function_bytecode(self, function: MethodId, start_offset=-1, end_offset=-1):
         """
@@ -243,7 +251,7 @@ class Apkinfo(object):
         :rtype: a generator of bytecodeobject in quark-engine
         """
 
-        if not function.isAPI:
+        if not function.is_import:
 
             r2 = self._get_r2(function.dexindex)
 
@@ -258,6 +266,10 @@ class Apkinfo(object):
                     if ins['offset'] >= end_offset:
                         break
 
+                    if ' ' not in ins['disasm']:
+                        # return-void
+                        continue
+                    
                     mnemonic, args = ins['disasm'].split(
                         maxsplit=1)  # Split into twe parts
 
