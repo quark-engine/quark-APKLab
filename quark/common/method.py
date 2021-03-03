@@ -24,11 +24,17 @@ class MethodId(object):
         return False
 
     def __repr__(self):
-        return f'<MethodId-address:{self.address} dexindex:{self.dexindex}, classname:{self.classname}, methodname:{self.methodname}, descriptor:{self.descriptor}>'
+        return f'<MethodId-address:{self.address} dex:{self.dexindex}, class:{self.classname}, method:{self.methodname}, descriptor:{self.descriptor}>'
 
     def __eq__(self, obj):
         return isinstance(obj,
                           MethodId) and obj.address == self.address and obj.classname == self.classname and obj.methodname == self.methodname and obj.descriptor == self.descriptor
+                        
+    def __lt__(self, obj):
+        return self.address < obj.address
+    
+    def __gt__(self, obj):
+        return self.address < obj.address
 
     def __hash__(self):
         return hash(self.address) ^ hash(self.classname) ^ hash(self.methodname) ^ hash(self.descriptor)
