@@ -4,13 +4,30 @@ class Bytecode(object):
     """
 
     def __init__(self, address, mnemonic, registers, parameter):
-        self.address = address
+        self._address = address
         self._mnemonic = mnemonic
-        if isinstance(registers[0], str):
-            for reg_str in registers:
-                self._registers = int(reg_str[1:])
-        else:
-            self._registers = registers
+        self._registers = []
+
+        if registers:
+            if isinstance(registers, list):
+                if isinstance(registers[0], str):
+                    if mnemonic.endswith('range'):
+                        if ".." not in registers[0]:
+                            raise TypeError(f'Unknown registers {registers}')
+
+                        start_reg, end_reg = registers[0].split("..", 2)
+                        start_reg = int(start_reg[1:])
+                        end_reg = int(end_reg[1:])
+
+                        self._registers = range(start_reg,end_reg)
+                    else:
+                        for reg_str in registers:
+                            self._registers.append(int(reg_str[1:]))
+                elif isinstance(registers[0], int):
+                    self._registers = registers
+            else:
+                raise TypeError(f'Unknown registers {registers}')
+
         self._parameter = parameter
 
     def __eq__(self, obj):
