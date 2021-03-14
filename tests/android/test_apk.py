@@ -76,15 +76,15 @@ class TestApkinfo(object):
 
     def test_find_method_by_addr(self, apkinfo_obj):
         # Illegal addresses
-        assert apkinfo_obj.find_methods_by_addr(-1) == None
-        assert apkinfo_obj.find_methods_by_addr(0) == None
-        assert apkinfo_obj.find_methods_by_addr(0xFFFFFFFF) == None
+        assert apkinfo_obj.find_methods_by_addr(0, -1) == None
+        assert apkinfo_obj.find_methods_by_addr(0, 0) == None
+        assert apkinfo_obj.find_methods_by_addr(0, 0xFFFFFFFF) == None
 
         # API functions
-        assert apkinfo_obj.find_methods_by_addr(0x6DB0) == MethodId(0x6D98, 0, 'Ljava/text/SimpleDateFormat;',
-                                                                    '<init>', '(Ljava/lang/String;)V')
+        assert apkinfo_obj.find_methods_by_addr(0, 0x6DB0) == MethodId(0x6D98, 0, 'Ljava/text/SimpleDateFormat;',
+                                                                       '<init>', '(Ljava/lang/String;)V')
         # Non-API functions
-        assert apkinfo_obj.find_methods_by_addr(0xE758) == MethodId(
+        assert apkinfo_obj.find_methods_by_addr(0, 0xE758) == MethodId(
             0xE758, 0, 'Lcom/ku6/android/videobrowser/Search_Activity;', 'search', '(Ljava/lang/String;)V')
 
     def test_find_methods(self, apkinfo_obj):
@@ -143,12 +143,12 @@ class TestApkinfo(object):
                           'length', '()I', True)
 
         assert set(apkinfo_obj.find_upper_methods(method)) == {
-            MethodId(0xE7C0, 0, 'Lcom/ku6/android/videobrowser/Search_Activity;',
-                     'setSearchKeyword', '(Ljava/lang/String;)V'),
-            MethodId(0xF0B0, 0, 'Lcom/ku6/android/videobrowser/Search_Result_Activity;',
-                     'setSearchKeyword', '(Ljava/lang/String;)V'),
-            MethodId(68168, 0, 'Lcom/ku6/android/videobrowser/SplashActivity;',
-                     'getDataSource', '(Lcom/ku6/android/videobrowser/entity/Version;)V'),
+            (59340, MethodId(0xE7C0, 0, 'Lcom/ku6/android/videobrowser/Search_Activity;',
+                             'setSearchKeyword', '(Ljava/lang/String;)V')),
+            (61626, MethodId(0xF0B0, 0, 'Lcom/ku6/android/videobrowser/Search_Result_Activity;',
+                             'setSearchKeyword', '(Ljava/lang/String;)V')),
+            (68208, MethodId(0x10A48, 0, 'Lcom/ku6/android/videobrowser/SplashActivity;',
+                             'getDataSource', '(Lcom/ku6/android/videobrowser/entity/Version;)V')),
         }
 
         # Non-API functions
@@ -156,10 +156,10 @@ class TestApkinfo(object):
             0xE758, 0, 'Lcom/ku6/android/videobrowser/Search_Activity', 'search', '(Ljava/lang/String;)V')
 
         assert set(apkinfo_obj.find_upper_methods(method)) == {
-            MethodId(0xDDCC, 0, 'Lcom/ku6/android/videobrowser/Search_Activity$4;',
-                     'onItemClick', '(Landroid/widget/AdapterView;Landroid/view/View;IJ)V', False),
-            MethodId(0xE7C0, 0, 'Lcom/ku6/android/videobrowser/Search_Activity;',
-                     'setSearchKeyword', '(Ljava/lang/String;)V', False)
+            (56826, MethodId(0xDDCC, 0, 'Lcom/ku6/android/videobrowser/Search_Activity$4;',
+                             'onItemClick', '(Landroid/widget/AdapterView;Landroid/view/View;IJ)V', False)),
+            (59372, MethodId(0xE7C0, 0, 'Lcom/ku6/android/videobrowser/Search_Activity;',
+                             'setSearchKeyword', '(Ljava/lang/String;)V', False))
         }
 
     def test_get_function_bytecode(self, apkinfo_obj):
@@ -173,27 +173,27 @@ class TestApkinfo(object):
         bytecode_list = apkinfo_obj.get_function_bytecode(
             MethodId(0x8ABC, 0, 'LaLa', 'La', 'Land', False))
         assert [bytecode for bytecode in bytecode_list] == [
-            Bytecode('new-instance', ['v0'],
-                           'Landroid/app/ProgressDialog;'),
-            Bytecode(
-                'invoke-direct', ['v0', 'v2'], 'Landroid/app/ProgressDialog.<init>(Landroid/content/Context;)V'),
-            Bytecode(
-                'invoke-virtual', ['v0', 'v3'], 'Landroid/app/ProgressDialog.setTitle(Ljava/lang/CharSequence;)V'),
-            Bytecode(
-                'invoke-virtual', ['v0', 'v4'], 'Landroid/app/ProgressDialog.setMessage(Ljava/lang/CharSequence;)V'),
-            Bytecode('return-object', ['v0'], None),
+            Bytecode(0x8ABC, 'new-instance', [0],
+                     'Landroid/app/ProgressDialog;'),
+            Bytecode(0x8AC0,
+                     'invoke-direct', [0, 2], 'Landroid/app/ProgressDialog.<init>(Landroid/content/Context;)V'),
+            Bytecode(0x8AC6,
+                     'invoke-virtual', [0, 3], 'Landroid/app/ProgressDialog.setTitle(Ljava/lang/CharSequence;)V'),
+            Bytecode(0x8ACC,
+                     'invoke-virtual', [0, 4], 'Landroid/app/ProgressDialog.setMessage(Ljava/lang/CharSequence;)V'),
+            Bytecode(0x8AD2, 'return-object', [0]),
         ]
 
         bytecode_list = apkinfo_obj.get_function_bytecode(
             MethodId(0x994C, 0, 'LaLa', 'La', 'Land')
         )
         assert [bytecode for bytecode in bytecode_list] == [
-            Bytecode(
-                'iget-object', ['v0', 'v1'], 'Lcom/ku6/android/videobrowser/ChannelDetailAdapter;->coll Ljava/util/ArrayList;'),
-            Bytecode(
-                'invoke-virtual', ['v0', 'v2'], 'Ljava/util/ArrayList.get(I)Ljava/lang/Object;'),
-            Bytecode('move-result-object', ['v0'], None),
-            Bytecode('return-object', ['v0'], None)
+            Bytecode(0x994C,
+                     'iget-object', [0, 1], 'Lcom/ku6/android/videobrowser/ChannelDetailAdapter;->coll Ljava/util/ArrayList;'),
+            Bytecode(0x9950,
+                     'invoke-virtual', [0, 2], 'Ljava/util/ArrayList.get(I)Ljava/lang/Object;'),
+            Bytecode(0x9956, 'move-result-object', [0]),
+            Bytecode(0x9958, 'return-object', [0])
         ]
 
     def test_delete(self, apkinfo_obj):
