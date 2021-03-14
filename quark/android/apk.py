@@ -266,29 +266,7 @@ class Apkinfo(object):
                     if ins['offset'] >= end_offset:
                         break
 
-                    if ' ' not in ins['disasm']:
-                        # return-void
-                        continue
-                    
-                    mnemonic, args = ins['disasm'].split(
-                        maxsplit=1)  # Split into twe parts
-
-                    # invoke-kind instruction may left method index at the last
-                    if mnemonic.startswith('invoke'):
-                        args = args[:args.rfind(' ;')]
-
-                    args = [arg.strip() for arg in re.split('[{},]+', args)]
-                    args = list(filter(bool, args))
-
-                    # Parameters only appear at the last
-                    if len(args) > 0 and not args[-1].startswith('v'):
-                        bytecode_obj = Bytecode(ins['offset'],
-                                                mnemonic, args[:-1], args[-1])
-                    else:
-                        bytecode_obj = Bytecode(ins['offset'],
-                                                mnemonic, args, None)
-
-                    yield bytecode_obj
+                    yield Bytecode.get_by_smali(ins['offset'], ins['disasm'])
 
     def check_valid(self):
         pass
@@ -300,7 +278,7 @@ class Apkinfo(object):
         try:
             for dirpath, _, files in os.walk(self._tmp_dir, False):
                 for filename in files:
-                        os.remove(os.path.join(dirpath, filename))
+                    os.remove(os.path.join(dirpath, filename))
             os.rmdir(self._tmp_dir)
         except:
             pass
