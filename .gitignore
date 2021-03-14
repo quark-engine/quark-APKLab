@@ -164,6 +164,11 @@ cython_debug/
 # Local History for Visual Studio Code
 .history/
 
+# cProfile
+*.pstats
+
 # Quark Enging
 .up_to_date.quark
 *.quark.log
+test-rules/
+tests/sample/
