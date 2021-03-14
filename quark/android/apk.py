@@ -259,11 +259,10 @@ class Apkinfo(object):
 
             if instruct_flow:
 
-                bytecode_obj = None
                 for ins in instruct_flow:
                     if ins['offset'] < start_offset:
                         continue
-                    if ins['offset'] >= end_offset:
+                    if ins['offset'] >= end_offset >= 0:
                         break
 
                     yield Bytecode.get_by_smali(ins['offset'], ins['disasm'])
