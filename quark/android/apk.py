@@ -5,6 +5,7 @@ import os
 import os.path
 import re
 import tempfile
+from typing import DefaultDict
 import zipfile
 from functools import cached_property, lru_cache
 
@@ -149,11 +150,11 @@ class Apkinfo(object):
         return MethodId(symbol['vaddr'], dex_index, classname, methodname, descriptor, symbol['is_imported'])
 
     @lru_cache
-    def get_all_methods(self, dexindex):
+    def get_all_methods_structured(self, dexindex):
         r2 = self._get_r2(dexindex)
 
         method_json_list = r2.cmdj('isj')
-        method_list = []
+        method_dict = DefaultDict(list)
         for json_obj in method_json_list:
             if 'type' not in json_obj or json_obj['type'] != 'FUNC':
                 continue
@@ -168,12 +169,12 @@ class Apkinfo(object):
 
             is_imported = json_obj['is_imported']
 
-            method_list.append(MethodId(
-                json_obj['vaddr'], dexindex, classname, methodname, descriptor, is_imported))
+            method = MethodId(json_obj['vaddr'], dexindex, classname, methodname, descriptor, is_imported)
+            method_dict[classname].append(method)
 
-        return method_list
+        return method_dict
 
-    def find_methods(self, classname='', methodname='', descriptor='', dex_index=None):
+    def find_methods(self, classname, methodname='', descriptor='', dex_index=None):
         """
         Find a list of methods matching given infomations.
 
@@ -192,7 +193,7 @@ class Apkinfo(object):
         """
 
         def method_filter(method: MethodId):
-            return (not classname or classname == method.classname) and (not methodname or methodname == method.methodname) and (not descriptor or descriptor == method.descriptor)
+            return (not methodname or methodname == method.methodname) and (not descriptor or descriptor == method.descriptor)
 
         if dex_index:
             dex_list = [dex_index]
@@ -200,8 +201,8 @@ class Apkinfo(object):
             dex_list = range(self.number_of_dex)
 
         for dex_index in dex_list:
-            all_methods = self.get_all_methods(dex_index)
-            filted_methods = filter(method_filter, all_methods)
+            method_dict = self.get_all_methods_structured(dex_index)
+            filted_methods = filter(method_filter, method_dict[classname])
             yield from filted_methods
 
     def find_upper_methods(self, method: MethodId):

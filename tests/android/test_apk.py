@@ -85,7 +85,7 @@ class TestApkinfo(object):
         assert apkinfo_obj.find_methods_by_addr(0, 0xE758) == MethodId(
             0xE758, 0, 'Lcom/ku6/android/videobrowser/Search_Activity;', 'search', '(Ljava/lang/String;)V')
 
-    def test_get_all_methods(self, apkinfo_obj):
+    def test_get_all_methods_structured(self, apkinfo_obj):
         truths = [
             MethodId(0x883C, 0, 'Lcom/ku6/android/videobrowser/About_Activity$1;',
                      '<init>', '(Lcom/ku6/android/videobrowser/About_Activity;)V'),
