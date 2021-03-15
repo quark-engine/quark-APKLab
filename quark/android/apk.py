@@ -191,7 +191,7 @@ class Apkinfo(object):
         :rtype: list of MethodId objects
         """
 
-        def method_filter(method: MethodId, classname, methodname, descriptor):
+        def method_filter(method: MethodId):
             return (not classname or classname == method.classname) and (not methodname or methodname == method.methodname) and (not descriptor or descriptor == method.descriptor)
 
         if dex_index:
@@ -202,8 +202,7 @@ class Apkinfo(object):
         target_methods = []
         for dex_index in dex_list:
             all_methods = self.get_all_methods(dex_index)
-            filted_methods = filter(lambda m: method_filter(
-                m, classname, methodname, descriptor), all_methods)
+            filted_methods = filter(method_filter, all_methods)
             target_methods.extend(filted_methods)
 
         return target_methods
