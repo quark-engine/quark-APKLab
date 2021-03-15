@@ -9,7 +9,7 @@ class Bytecode(object):
     def __init__(self, address, mnemonic, registers=None, parameter=None):
         self._address = address
         self._mnemonic = mnemonic
-        self._registers = tuple(registers) if registers else None
+        self._registers = tuple(registers) if registers else tuple()
 
         if parameter:
             self._parameter = parameter[:-

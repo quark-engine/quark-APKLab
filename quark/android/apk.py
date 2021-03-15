@@ -1,14 +1,14 @@
+import hashlib
+import json
 import logging
 import os
 import os.path
 import re
 import tempfile
 import zipfile
-import hashlib
 from functools import cached_property, lru_cache
 
 import r2pipe
-
 from quark.android.axml import AxmlReader
 from quark.common.bytecode import Bytecode
 from quark.common.method import MethodId
@@ -50,14 +50,14 @@ class Apkinfo(object):
         r2.cmd('aa')
         return r2
 
-    def r2_escape(self, string: str) ->str:
+    def r2_escape(self, string: str) -> str:
         escapeList = ['>']
 
         result = ''
         for char in string:
             if char in escapeList:
                 result = result + '\\'
-            
+
             result = result + char
 
         return result
@@ -81,6 +81,10 @@ class Apkinfo(object):
     @property
     def filesize(self):
         return os.path.getsize(self.filepath)
+
+    @property
+    def number_of_dex(self):
+        return len(self._dex_list)
 
     @property
     def manifest(self):
@@ -144,6 +148,31 @@ class Apkinfo(object):
 
         return MethodId(symbol['vaddr'], dex_index, classname, methodname, descriptor, symbol['is_imported'])
 
+    @lru_cache
+    def get_all_methods(self, dexindex):
+        r2 = self._get_r2(dexindex)
+
+        method_json_list = r2.cmdj('isj')
+        method_list = []
+        for json_obj in method_json_list:
+            if 'type' not in json_obj or json_obj['type'] != 'FUNC':
+                continue
+
+            full_name = json_obj['realname']
+            classname, method_descriptor = full_name.split(
+                '.method.', maxsplit=1)
+            classname = classname + ';'
+
+            methodname, descriptor = method_descriptor.split('(', maxsplit=1)
+            descriptor = '(' + descriptor
+
+            is_imported = json_obj['is_imported']
+
+            method_list.append(MethodId(
+                json_obj['vaddr'], dexindex, classname, methodname, descriptor, is_imported))
+
+        return method_list
+
     def find_methods(self, classname='', methodname='', descriptor='', dex_index=None):
         """
         Find a list of methods matching given infomations.
@@ -161,62 +190,23 @@ class Apkinfo(object):
         :return: a list of methods
         :rtype: list of MethodId objects
         """
-        method_filter = None
-        if classname or methodname:
-            if classname.endswith(';'):
-                classname = classname[:-1]
-            method_filter = f'&{classname}.method.{self.r2_escape(methodname)}'
-            if methodname:
-                method_filter += '('
 
-        if descriptor:
-            if method_filter is None:
-                method_filter = f'{descriptor}'
-            else:
-                method_filter += f',{descriptor}'
-        command = 'is~' + method_filter
-        result = None
+        def method_filter(method: MethodId, classname, methodname, descriptor):
+            return (not classname or classname == method.classname) and (not methodname or methodname == method.methodname) and (not descriptor or descriptor == method.descriptor)
 
-        if not dex_index:
-            dex_index = -1
-            for dex_index in range(len(self._dex_list)):
-                r2 = self._get_r2(dex_index)
-                result = r2.cmd(command)
-                if result:
-                    break
+        if dex_index:
+            dex_list = [dex_index]
         else:
-            r2 = self._get_r2(dex_index)
-            result = r2.cmd(command)
+            dex_list = range(self.number_of_dex)
 
-        if not result:
-            return []
+        target_methods = []
+        for dex_index in dex_list:
+            all_methods = self.get_all_methods(dex_index)
+            filted_methods = filter(lambda m: method_filter(
+                m, classname, methodname, descriptor), all_methods)
+            target_methods.extend(filted_methods)
 
-        method_list = []
-        for l in result.splitlines():
-            segments = re.split(' +', l)
-            if segments[4] != 'FUNC':
-                continue
-
-            # TODO - use isj for gathering infomations
-
-            rs_address = int(segments[2], 16)
-
-            signature = segments[-1]
-            imported = signature.startswith('imp.')
-            if imported:
-                rs_classname = signature[4:signature.index('.method.')]
-            else:
-                rs_classname = signature[:signature.index('.method.')]
-            rs_classname = rs_classname + ';'
-
-            rs_methodname = signature[signature.index(
-                '.method.') + 8:signature.index('(')]
-            rs_descriptor = signature[signature.index('('):]
-
-            method_list.append(
-                MethodId(rs_address, dex_index, rs_classname, rs_methodname, rs_descriptor, imported))
-
-        return method_list
+        return target_methods
 
     def find_upper_methods(self, method: MethodId):
         """
@@ -239,7 +229,8 @@ class Apkinfo(object):
             if 'from' in xref:
                 yield (xref['from'], self.find_methods_by_addr(method.dexindex, xref['from']))
             else:
-                logging.debug(f'Key from was not found at searching upper methods for {method}.')
+                logging.debug(
+                    f'Key from was not found at searching upper methods for {method}.')
 
     def get_function_bytecode(self, function: MethodId, start_offset=-1, end_offset=-1):
         """

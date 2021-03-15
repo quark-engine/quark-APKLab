@@ -87,6 +87,23 @@ class TestApkinfo(object):
         assert apkinfo_obj.find_methods_by_addr(0, 0xE758) == MethodId(
             0xE758, 0, 'Lcom/ku6/android/videobrowser/Search_Activity;', 'search', '(Ljava/lang/String;)V')
 
+    def test_get_all_methods(self, apkinfo_obj):
+        truths = [
+            MethodId(0x883C, 0, 'Lcom/ku6/android/videobrowser/About_Activity$1;',
+                     '<init>', '(Lcom/ku6/android/videobrowser/About_Activity;)V'),
+            MethodId(0x8858, 0, 'Lcom/ku6/android/videobrowser/About_Activity$1;',
+                     'onClick', '(Landroid/view/View;)V'),
+            MethodId(
+                0x88AC, 0, 'Lcom/ku6/android/videobrowser/Base_Activity;', '<init>', '()V'),
+            MethodId(0x88C4, 0, 'Lcom/ku6/android/videobrowser/Base_Activity;',
+                     'buildDialog3', '(Landroid/content/Context;)Landroid/app/Dialog;'),
+            MethodId(0x8928, 0, 'Lcom/ku6/android/videobrowser/Base_Activity;',
+                     'buildDialog5', '(Landroid/content/Context;)Landroid/app/Dialog;')
+        ]
+
+        for truth in truths:
+            assert truth in apkinfo_obj.get_all_methods(0)
+
     def test_find_methods(self, apkinfo_obj):
         result = apkinfo_obj.find_methods(
             classname='Ljava/util/ArrayList;', methodname='add', descriptor='(Ljava/lang/Object;)Z')
@@ -96,7 +113,7 @@ class TestApkinfo(object):
         result = apkinfo_obj.find_methods(
             classname='Ljava/util/ArrayList;', methodname='add')
         assert set(result) == set((
-            MethodId(0x6DB0, -1, 'Ljava/util/ArrayList;', 'add', '(Ljava/lang/Object;)Z'),))
+            MethodId(0x6DB0, -1, 'Ljava/util/ArrayList;', 'add', '(Ljava/lang/Object;)Z', True),))
 
         result = apkinfo_obj.find_methods(
             methodname='setNegativeButton', descriptor='(ILandroid/content/DialogInterface$OnClickListener;)Landroid/app/AlertDialog$Builder;')
