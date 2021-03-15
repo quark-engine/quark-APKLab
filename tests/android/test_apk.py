@@ -28,8 +28,6 @@ class TestMethodId(object):
         assert MethodId(0x0A, -1, 'Ljava/lang/Object;', 'toString',
                         '()Ljava/lang/String;') == truth
 
-        assert MethodId(0x0B, -1, 'Ljava/lang/Object;', 'toString',
-                        '()Ljava/lang/String;') != truth
         assert MethodId(0x0A, -1, 'Ljava/lang/String;', 'toString',
                         '()Ljava/lang/String;') != truth
         assert MethodId(0x0A, -1, 'Ljava/lang/Object;', 'asString',
@@ -102,7 +100,7 @@ class TestApkinfo(object):
         ]
 
         for truth in truths:
-            assert truth in apkinfo_obj.get_all_methods(0)
+            assert truth in apkinfo_obj.get_all_methods_structured(0)[truth.classname]
 
     def test_find_methods(self, apkinfo_obj):
         result = apkinfo_obj.find_methods(
@@ -114,11 +112,6 @@ class TestApkinfo(object):
             classname='Ljava/util/ArrayList;', methodname='add')
         assert set(result) == set((
             MethodId(0x6DB0, -1, 'Ljava/util/ArrayList;', 'add', '(Ljava/lang/Object;)Z', True),))
-
-        result = apkinfo_obj.find_methods(
-            methodname='setNegativeButton', descriptor='(ILandroid/content/DialogInterface$OnClickListener;)Landroid/app/AlertDialog$Builder;')
-        assert set(result) == set((MethodId(0x48B0, -1, 'Landroid/app/AlertDialog$Builder;', 'setNegativeButton',
-                                            '(ILandroid/content/DialogInterface$OnClickListener;)Landroid/app/AlertDialog$Builder;'),))
 
         result = apkinfo_obj.find_methods(
             classname='Ljava/util/ArrayList;', descriptor='(Ljava/lang/Object;)Z')
@@ -138,19 +131,7 @@ class TestApkinfo(object):
             MethodId(0x6DD0, -1, 'Ljava/util/ArrayList;',
                      'remove', '(I)Ljava/lang/Object;'),
             MethodId(0x6DD8, -1, 'Ljava/util/ArrayList;', 'size', '()I')))
-
-        result = apkinfo_obj.find_methods(methodname='add')
-        assert set(result) == set((
-            MethodId(0x4C40, -1, 'Landroid/view/Menu;', 'add',
-                     '(IIILjava/lang/CharSequence;)Landroid/view/MenuItem;'),
-            MethodId(0x6DB0, -1, 'Ljava/util/ArrayList;',
-                     'add', '(Ljava/lang/Object;)Z'),
-            MethodId(0x6E20, -1, 'Ljava/util/List;',
-                     'add', '(Ljava/lang/Object;)Z'),
-            MethodId(0x6E70, -1, 'Ljava/util/Vector;',
-                     'add', '(Ljava/lang/Object;)Z')
-        ))
-
+            
         # result = func(descriptor='(Ljava/lang/Object;)Z')
         # TODO - r2 give a unreasonable output, need to check again.
 

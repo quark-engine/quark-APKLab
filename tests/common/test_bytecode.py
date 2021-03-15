@@ -3,8 +3,6 @@ from quark.common.bytecode import Bytecode
 
 class TestBytecode:
     def test_eq(self):
-        assert Bytecode(0x0, 'move', [1, 2]) != Bytecode(0x1, 'move', [1, 2])
-
         assert Bytecode(0x0, 'move', [1, 2]) != Bytecode(0x0, 'const', [1, 2])
 
         assert Bytecode(0x0, 'move', [1, 2]) != Bytecode(0x0, 'move', [1, 3])
@@ -12,8 +10,8 @@ class TestBytecode:
     def test_hash(self):
         assert hash(Bytecode(0x1, 'move', [1, 2])) == hash(
             Bytecode(0x1, 'move', [1, 2]))
-        assert hash(Bytecode(0x0, 'move', [1, 2])) != hash(
-            Bytecode(0x1, 'move', [1, 2]))
+        assert hash(Bytecode(0x1, 'move', [1, 2])) != hash(
+            Bytecode(0x1, 'const', [1, 2]))
 
     @staticmethod
     def test_get_by_smali():

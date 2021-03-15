@@ -28,7 +28,7 @@ class MethodId(object):
 
     def __eq__(self, obj):
         return isinstance(obj,
-                          MethodId) and obj.address == self.address and obj.classname == self.classname and obj.methodname == self.methodname and obj.descriptor == self.descriptor
+                          MethodId) and obj.classname == self.classname and obj.methodname == self.methodname and obj.descriptor == self.descriptor
                         
     def __lt__(self, obj):
         return self.address < obj.address
@@ -37,4 +37,4 @@ class MethodId(object):
         return self.address < obj.address
 
     def __hash__(self):
-        return hash(self.address) ^ hash(self.classname) ^ hash(self.methodname) ^ hash(self.descriptor)
+        return hash(self.classname) ^ hash(self.methodname) ^ hash(self.descriptor)

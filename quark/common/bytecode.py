@@ -18,10 +18,10 @@ class Bytecode(object):
             self._parameter = None
 
     def __eq__(self, obj):
-        return isinstance(obj, Bytecode) and self._address == obj._address and self._mnemonic == obj._mnemonic and self._registers == obj._registers and self._parameter == obj._parameter
+        return isinstance(obj, Bytecode) and self._mnemonic == obj._mnemonic and self._registers == obj._registers and self._parameter == obj._parameter
 
     def __hash__(self):
-        return hash(self._address) ^ hash(self._mnemonic) ^ (hash(self._registers) < 2) ^ (hash(self._parameter) < 4)
+        return hash(self._mnemonic) ^ (hash(self._registers) < 2) ^ (hash(self._parameter) < 4)
 
     def __str__(self):
         return f'{self._mnemonic} {["v"+str(reg) for reg in self.registers]} {self._parameter}'
