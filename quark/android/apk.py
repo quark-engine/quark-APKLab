@@ -163,8 +163,8 @@ class Apkinfo(object):
                 '.method.', maxsplit=1)
             classname = classname + ';'
 
-            methodname, descriptor = method_descriptor.split('(', maxsplit=1)
-            descriptor = '(' + descriptor
+            methodname = method_descriptor[:method_descriptor.index('(')]
+            descriptor = method_descriptor[method_descriptor.index('('):]
 
             is_imported = json_obj['is_imported']
 
