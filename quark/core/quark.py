@@ -1,6 +1,7 @@
 import logging
 
 from copy import copy
+from re import escape
 from typing import Sequence
 from treelib import Tree
 
@@ -199,8 +200,10 @@ class Quark:
         for api in rule.x2n3n4_comb:
             methods = self.apkinfo.find_methods(
                 api['class'], api['method'], api['descriptor'])
-            if methods:
-                api_object.append(methods[0])
+            try:
+                api_object.append(next(methods))
+            except StopIteration:
+                break
 
         behavior.api_objects = api_object
 

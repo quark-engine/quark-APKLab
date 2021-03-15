@@ -199,13 +199,10 @@ class Apkinfo(object):
         else:
             dex_list = range(self.number_of_dex)
 
-        target_methods = []
         for dex_index in dex_list:
             all_methods = self.get_all_methods(dex_index)
             filted_methods = filter(method_filter, all_methods)
-            target_methods.extend(filted_methods)
-
-        return target_methods
+            yield from filted_methods
 
     def find_upper_methods(self, method: MethodId):
         """
