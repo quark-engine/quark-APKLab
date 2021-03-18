@@ -143,8 +143,8 @@ class Quark:
         return registers
 
     def check_register(self, sequence: Sequence, registers=None):
-        first_tree = sequence.first_api_tree
-        second_tree = sequence.second_api_tree
+        first_tree = sequence.tree_list[0]
+        second_tree = sequence.tree_list[1]
         parent = sequence.parent
 
         first_node = [first_tree.get_node(method)

@@ -10,7 +10,7 @@ CONF_STAGE_4 = 4
 CONF_STAGE_5 = 5
 
 Sequence = namedtuple(
-    'Sequence', 'parent, first_api_tree, second_api_tree')
+    'Sequence', 'parent, tree_list')
 
 class Behavior:
     __slots__=['related_rule','reached_stage','api_objects','sequence','registers']
