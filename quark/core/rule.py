@@ -3,40 +3,48 @@ import os
 
 
 class QuarkRule:
-    """RuleObject is used to store the rule from json file"""
 
-    __slots__ = ["check_item", "_json_obj", "_crime", "_x1_permission", "_x2n3n4_comb", "_yscore", "rule_filename"]
+    __slots__ = ['_crime', '_permission', '_api', '_score', '_label', '_file']
 
     def __init__(self, json_filename):
         with open(json_filename) as json_file:
             json_obj = json.loads(json_file.read())
-            self._crime = json_obj["crime"]
-            self._x1_permission = json_obj["x1_permission"]
-            self._x2n3n4_comb = json_obj["x2n3n4_comb"]
-            self._yscore = json_obj["yscore"]
-            self.rule_filename = os.path.basename(json_filename)
+            self._crime = json_obj['crime']
+            self._permission = json_obj['permission']
+            self._api = json_obj['api']
+            self._score = json_obj['score']
+            self._label = json_obj['label']
+            self._file = json_filename
 
     def __repr__(self):
         return f"<RuleObject-{self.rule_filename}>"
 
     def __eq__(self, obj):
-        return isinstance(obj, QuarkRule) and self.rule_filename == obj.rule_filename
+        return isinstance(obj, QuarkRule) and self._file == obj._file
 
     def __hash__(self):
-        return hash(self.rule_filename)
+        return hash(self._file)
 
     @property
     def crime(self):
         return self._crime
 
     @property
-    def x1_permission(self):
-        return self._x1_permission
+    def permission(self):
+        return self._permission
 
     @property
-    def x2n3n4_comb(self):
-        return self._x2n3n4_comb
+    def api(self):
+        return self._api
 
     @property
-    def yscore(self):
-        return self._yscore
+    def score(self):
+        return self._score
+
+    @property
+    def label(self):
+        return self._label
+
+    @property
+    def filepath(self):
+        return self._file

@@ -191,13 +191,13 @@ class Quark:
 
         # Stage 1 - Check Permission
         passed_permissions = (
-            permission for permission in rule.x1_permission if permission in self.apkinfo.permissions)
+            permission for permission in rule.permission if permission in self.apkinfo.permissions)
 
-        if len(list(passed_permissions)) != len(rule.x1_permission):
+        if len(list(passed_permissions)) != len(rule.permission):
             return CONF_STAGE_NONE
 
         api_object = []
-        for api in rule.x2n3n4_comb:
+        for api in rule.api:
             methods = self.apkinfo.find_methods(
                 api['class'], api['method'], api['descriptor'])
             try:
@@ -208,7 +208,7 @@ class Quark:
         behavior.api_objects = api_object
 
         # Stage 2 - All native apis exist
-        return CONF_STAGE_1 if len(api_object) < len(rule.x2n3n4_comb) else CONF_STAGE_2
+        return CONF_STAGE_1 if len(api_object) < len(rule.api) else CONF_STAGE_2
 
     def run_sequence_phase(self, behavior: Behavior):
         # Check if apis exist in the same call graph

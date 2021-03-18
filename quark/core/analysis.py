@@ -36,7 +36,7 @@ class QuarkAnalysis(object):
         # Permissions, Native Apis, Sequences, Used Registers
         behavior = Behavior(rule)
         self._rule_results[rule] = []
-        self._score_sum += rule.yscore
+        self._score_sum += rule.score
 
         return behavior
 
