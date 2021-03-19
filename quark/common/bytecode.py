@@ -17,8 +17,20 @@ class Bytecode(object):
         else:
             self._parameter = None
 
-    def __eq__(self, obj):
-        return isinstance(obj, Bytecode) and self._mnemonic == obj._mnemonic and self._registers == obj._registers and self._parameter == obj._parameter
+    def __eq__(self, bytecode):
+        return self._address == bytecode.address
+
+    def __gt__(self, bytecode):
+        return self._address > bytecode.address
+
+    def __ge__(self, bytecode):
+        return self._address >= bytecode.address
+
+    def __lt__(self, bytecode):
+        return self._address < bytecode.address
+
+    def __le__(self, bytecode):
+        return self._address <= bytecode.address
 
     def __hash__(self):
         return hash(self._mnemonic) ^ (hash(self._registers) < 2) ^ (hash(self._parameter) < 4)

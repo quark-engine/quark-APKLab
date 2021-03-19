@@ -224,10 +224,21 @@ class Apkinfo(object):
                 continue
 
             if 'from' in xref:
-                yield (xref['from'], self.find_methods_by_addr(method.dexindex, xref['from']))
+                yield (self.find_bytecode_by_addr(method.dexindex, xref['from']), self.find_methods_by_addr(method.dexindex, xref['from']))
             else:
                 logging.debug(
                     f'Key from was not found at searching upper methods for {method}.')
+
+    def find_bytecode_by_addr(self, dex_index, offset):
+        r2 = self._get_r2(dex_index)
+
+        ins_json = r2.cmdj(f'pdj 1 @ {offset}')
+
+        if ins_json and 'disasm' in ins_json[0]:
+            ins = ins_json[0]
+            return Bytecode.get_by_smali(ins['offset'], ins['disasm'])
+        else:
+            return None
 
     def get_function_bytecode(self, function: MethodId, start_offset=-1, end_offset=-1):
         """

@@ -39,20 +39,20 @@ class Quark:
         for _ in range(search_depth):
             for leaf in tree.leaves():
                 uppers = self.apkinfo.find_upper_methods(leaf.identifier)
-                for addr, upper in uppers:
+                for bytecode, upper in uppers:
                     if not tree.contains(upper):
                         node = tree.create_node(
-                            identifier=upper, data=[addr], parent=leaf)
+                            identifier=upper, data=[bytecode], parent=leaf)
                     else:
-                        tree.get_node(upper).data.append(addr)
+                        tree.get_node(upper).data.append(bytecode)
 
         return tree
 
-    def check_register_in_method(self, method: MethodId, registers, start_offset=-1, end_offset=-1, reset_offsets=None):
+    def check_register_in_method(self, method: MethodId, registers, start_bytecode=None, end_bytecode=None, reset_bytecodes=None):
         old_registers = copy(registers)
         # Fetch target ranger of instructions
         instructions = [ins for ins in self.apkinfo.get_function_bytecode(
-            method, start_offset, end_offset)]
+            method, start_bytecode.address if start_bytecode else -1, end_bytecode.address if end_bytecode else -1)]
         instructions.reverse()
 
         # Apply all opcode reversely and remove those were override
@@ -74,6 +74,8 @@ class Quark:
             'monitor', 'instance', 'goto', 'if', 'add', 'sub', 'rsub', 'mul', 'div', 'rem', 'and', 'or', 'xor', 'shl',
             'shr', 'ushr', 'check', 'cmp', 'iget', 'iput', 'aget', 'aput'
         )
+
+        reset_offsets = (bytecode.address for bytecode in reset_bytecodes)
 
         for ins in instructions:
             # print(f'{ins.address} {str(ins)}')
@@ -122,9 +124,9 @@ class Quark:
 
         while len(invoke_nodes) > 2 and any(registers):
             current_node = invoke_nodes.pop()
-            first_address = min(current_node.data)
+            first_bytecode = min(current_node.data)
             self.check_register_in_method(
-                current_node.identifier, registers, start_offset=first_address, reset_offsets=current_node.data)
+                current_node.identifier, registers, start_bytecode=first_bytecode, reset_bytecodes=current_node.data)
 
         return registers
 
@@ -136,9 +138,9 @@ class Quark:
 
         while len(invoke_nodes) > 2 and any(registers):
             current_node = invoke_nodes.pop()
-            least_address = max(current_node.data)
+            least_bytecode = max(current_node.data)
             self.check_register_in_method(
-                current_node.identifier, registers, end_offset=least_address, reset_offsets=current_node.data)
+                current_node.identifier, registers, end_bytecode=least_bytecode, reset_bytecodes=current_node.data)
 
         return registers
 
@@ -155,18 +157,15 @@ class Quark:
         if registers is None:
             # Setup the registers and adjust end_offset
             upper_node = second_node[-2]
-            least_address = max(upper_node.data)
+            least_bytecode = max(upper_node.data)
 
-            try:
-                initial_instruction = next(self.apkinfo.get_function_bytecode(
-                    upper_node.identifier, least_address, least_address + 1))
-            except StopIteration as s:
+            if not least_bytecode:
                 logging.warning(
-                    f'Unable fetch bytecode at {least_address} with {upper_node.identifier}, skip this scanning.')
+                    f'Unable fetch bytecode at {least_bytecode} with {upper_node.identifier}, skip this scanning.')
                 return [False for _ in range(MAX_REG_COUNT)]
 
             registers = [False for _ in range(MAX_REG_COUNT)]
-            for reg_index in initial_instruction.registers:
+            for reg_index in least_bytecode.registers:
                 registers[reg_index] = True
 
         first_invoke_for_first_api = min(first_tree.get_node(parent).data)
@@ -235,15 +234,15 @@ class Quark:
                 passing_4_list = []
                 for parent in common_parents:
                     # Test sequence of invoke addresses from two methods
-                    first_address_for_first_method = min(
+                    first_bytecode_for_first_method = min(
                         first_tree.get_node(parent).data)
-                    least_address_for_second_method = max(
+                    least_bytecode_for_second_method = max(
                         second_tree.get_node(parent).data)
 
                     cloned_behavior = copy(behavior)
                     cloned_behavior.sequence = Sequence(
-                        parent, trees[first_index], trees[second_index])
-                    if first_address_for_first_method < least_address_for_second_method:
+                        parent, (trees[first_index], trees[second_index]))
+                    if first_bytecode_for_first_method < least_bytecode_for_second_method:
                         passing_4_list.append(cloned_behavior)
                     else:
                         passing_3_list.append(cloned_behavior)
