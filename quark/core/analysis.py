@@ -1,6 +1,7 @@
 from collections import defaultdict, namedtuple
-from quark.core.rule import QuarkRule
 
+from quark.common.bytecode import Bytecode
+from quark.core.rule import QuarkRule
 
 CONF_STAGE_NONE = 0
 CONF_STAGE_1 = 1
@@ -12,16 +13,19 @@ CONF_STAGE_5 = 5
 Sequence = namedtuple(
     'Sequence', 'parent, tree_list')
 
-class Behavior:
-    __slots__=['related_rule','reached_stage','api_objects','sequence','registers']
 
-    def __init__(self, rule:QuarkRule):
+class Behavior:
+    __slots__ = ['related_rule', 'reached_stage',
+                 'api_objects', 'sequence', 'registers']
+
+    def __init__(self, rule: QuarkRule):
         self.related_rule = rule
-        
+
         self.reached_stage = CONF_STAGE_NONE
         self.api_objects = None
         self.sequence = None
         self.registers = None
+
 
 class QuarkAnalysis(object):
 
@@ -70,50 +74,80 @@ class QuarkAnalysis(object):
             return 'High Risk'
 
     def get_json_report(self):
-        crimes = {}
-        for rule in self._rule_results:
-            passed_stage, rule_result = self._rule_results[rule]
+        crime_list = []
+        for rule, behavior_list in self._rule_results.items():
+            max_stage = max(
+                (behavior.reached_stage for behavior in behavior_list))
             report = {
                 'crime': rule.crime,
-                'score': rule.yscore,
-                'weight': self.get_rule_confidence(rule, passed_stage),
-                'confidence': f'{passed_stage/CONF_STAGE_5 * 100}%',
-                'permissions': [],
-                'native_api': [],
-                'combination': [],
-                'sequence': [],
-                'register': []
+                'score': rule.score,
+                'weight': self.get_rule_confidence(rule, max_stage),
+                'confidence': f'{max_stage/CONF_STAGE_5 * 100}%'
             }
 
-            if passed_stage >= CONF_STAGE_1:
-                report['permissions'] = rule_result['permissions']
+            if max_stage >= CONF_STAGE_1:
+                report['permissions'] = rule.permission
 
-            if passed_stage >= CONF_STAGE_2:
-                report['native_api'] = [{
-                    'class': api.classname,
-                    'method': api.methodname
-                } for api in rule_result['native_api']]
+            if max_stage >= CONF_STAGE_2:
+                report['matched_api'] = rule.api
 
-            if passed_stage >= CONF_STAGE_3:
-                # Nothing to log
-                pass
+            if max_stage >= CONF_STAGE_3:
+                report['combination'] = list([self._generate_invoke_report(
+                    beh.sequence) for beh in behavior_list if beh.reached_stage == CONF_STAGE_3])
 
-            if passed_stage >= CONF_STAGE_4:
-                report['sequence'] = []
+            if max_stage >= CONF_STAGE_4:
+                report['sequence'] = list([self._generate_invoke_report(
+                    beh.sequence) for beh in behavior_list if beh.reached_stage >= CONF_STAGE_4])
 
-                for first_result, second_result in rule_result:
-                    first_result = list(first_result)
-                    first_result.reverse()
+            if max_stage >= CONF_STAGE_5:
+                report['register'] = []
 
-                    for bytecode, method in first_result:
-                        # TODO
-                        pass
+                for behavior in behavior_list:
+                    if behavior.reached_stage!=CONF_STAGE_5:
+                        continue
+                    register_report = {
+                        'parent': str(behavior.sequence.parent),
+                        'reg_index': behavior.registers
+                    }
 
-            if passed_stage >= CONF_STAGE_5:
-                report['register'] = rule_result['register']
+                    report['register'].append(register_report)
+
+            crime_list.append(report)
+
+        return crime_list
 
     @staticmethod
     def get_rule_confidence(rule, confidence):
         if confidence == 0:
             return 0
-        return (2 ** (confidence - 1) * rule.yscore) / 2 ** 4
+        return (2 ** (confidence - 1) * rule.score) / 2 ** 4
+
+    @staticmethod
+    def _generate_invoke_report(sequence_obj):
+        parent = sequence_obj.parent
+        tree_list = sequence_obj.tree_list
+
+        call_graph = {
+            'parent': str(parent),
+            'call_graph': []
+        }
+
+        for tree in tree_list:
+            path = []
+
+            for method in tree.rsearch(parent):
+                if method is tree.root:
+                    break
+
+                method_item = {
+                    'caller': str(method),
+                    'invoke_at': [str(bytecode) for bytecode in tree.get_node(method).data]
+                }
+                path.append(method_item)
+
+            call_graph['call_graph'].append({
+                'api': str(tree.root),
+                'path': path
+            })
+
+        return call_graph

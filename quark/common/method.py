@@ -38,3 +38,6 @@ class MethodId(object):
 
     def __hash__(self):
         return hash(self.classname) ^ hash(self.methodname) ^ hash(self.descriptor)
+
+    def __str__(self) -> str:
+        return f'{self.classname}->{self.methodname} {self.descriptor}'
