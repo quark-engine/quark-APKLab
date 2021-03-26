@@ -7,6 +7,7 @@ name = "pypi"
 treelib = "*"
 r2pipe = "*"
 prettytable = "*"
+tqdm = "*"
 
 [dev-packages]
 autopep8 = "*"
