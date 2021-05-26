@@ -7,9 +7,15 @@ name = "pypi"
 treelib = "*"
 r2pipe = "*"
 prettytable = "*"
+tqdm = "*"
+click = "*"
 
 [dev-packages]
-autopep8 = "*"
+pytest = "*"
+black = "*"
 
 [requires]
 python_version = "3.9"
+
+[pipenv]
+allow_prereleases = true

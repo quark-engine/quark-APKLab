@@ -1,13 +1,11 @@
 import hashlib
-import json
 import logging
 import os
 import os.path
-import re
 import tempfile
-from typing import DefaultDict
 import zipfile
 from functools import cached_property, lru_cache
+from typing import DefaultDict
 
 import r2pipe
 from quark.android.axml import AxmlReader
@@ -66,7 +64,7 @@ class Apkinfo(object):
     @property
     def md5(self):
         md5 = hashlib.md5()
-        with open(self.apk_filepath, "rb") as f:
+        with open(self.filepath, "rb") as f:
             for chunk in iter(lambda: f.read(4096), b""):
                 md5.update(chunk)
         return md5.hexdigest()
@@ -110,11 +108,11 @@ class Apkinfo(object):
         permission_list = set()
 
         for tag in axml:
-            if 'Name' in tag.keys() \
-                    and axml.get_string(tag['Name']) == 'uses-permission':
+            label = tag.get('Name')
+            if label and axml.get_string(label) == 'uses-permission':
                 attrs = axml.get_attributes(tag)
 
-                if not attrs is None:
+                if attrs:
                     permission = axml.get_string(attrs[0]['Value'])
                     permission_list.add(permission)
 
@@ -134,7 +132,7 @@ class Apkinfo(object):
 
         r2 = self._get_r2(dex_index)
         section = r2.cmdj(f'iSj. @ {address}')
-        if section is None or 'name' not in section or (section['name'] != 'constpool' and section['name'] != 'code'):
+        if section is None or (section.get('name') != 'constpool' and section.get('name') != 'code'):
             return None
 
         symbol = r2.cmdj(f'isj. @ {address}')
@@ -150,13 +148,13 @@ class Apkinfo(object):
         return MethodId(symbol['vaddr'], dex_index, classname, methodname, descriptor, symbol['is_imported'])
 
     @lru_cache
-    def get_all_methods_structured(self, dexindex):
+    def get_all_methods_classified(self, dexindex):
         r2 = self._get_r2(dexindex)
 
         method_json_list = r2.cmdj('isj')
         method_dict = DefaultDict(list)
         for json_obj in method_json_list:
-            if 'type' not in json_obj or json_obj['type'] != 'FUNC':
+            if json_obj.get('type') != 'FUNC':
                 continue
 
             full_name = json_obj['realname']
@@ -169,7 +167,8 @@ class Apkinfo(object):
 
             is_imported = json_obj['is_imported']
 
-            method = MethodId(json_obj['vaddr'], dexindex, classname, methodname, descriptor, is_imported)
+            method = MethodId(
+                json_obj['vaddr'], dexindex, classname, methodname, descriptor, is_imported)
             method_dict[classname].append(method)
 
         return method_dict
@@ -201,7 +200,7 @@ class Apkinfo(object):
             dex_list = range(self.number_of_dex)
 
         for dex_index in dex_list:
-            method_dict = self.get_all_methods_structured(dex_index)
+            method_dict = self.get_all_methods_classified(dex_index)
             filted_methods = filter(method_filter, method_dict[classname])
             yield from filted_methods
 
@@ -224,7 +223,7 @@ class Apkinfo(object):
                 continue
 
             if 'from' in xref:
-                yield (self.find_bytecode_by_addr(method.dexindex, xref['from']), self.find_methods_by_addr(method.dexindex, xref['from']))
+                yield (xref['from'], self.find_methods_by_addr(method.dexindex, xref['from']))
             else:
                 logging.debug(
                     f'Key from was not found at searching upper methods for {method}.')

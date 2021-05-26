@@ -152,14 +152,8 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-
 # VScode
-.vscode/*
-.vscode/settings.json
-.vscode/tasks.json
-.vscode/launch.json
-.vscode/extensions.json
-*.code-workspace
+.vscode
 
 # Local History for Visual Studio Code
 .history/
@@ -167,8 +161,9 @@ cython_debug/
 # cProfile
 *.pstats
 
-# Quark Enging
+# Quark Engine
 .up_to_date.quark
 *.quark.log
 test-rules/
 tests/sample/
+tests/workspace/

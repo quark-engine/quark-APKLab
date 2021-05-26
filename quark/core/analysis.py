@@ -103,7 +103,7 @@ class QuarkAnalysis(object):
                 report['register'] = []
 
                 for behavior in behavior_list:
-                    if behavior.reached_stage!=CONF_STAGE_5:
+                    if behavior.reached_stage != CONF_STAGE_5:
                         continue
                     register_report = {
                         'parent': str(behavior.sequence.parent),
