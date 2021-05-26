@@ -100,7 +100,7 @@ class TestApkinfo(object):
         ]
 
         for truth in truths:
-            assert truth in apkinfo_obj.get_all_methods_structured(0)[truth.classname]
+            assert truth in apkinfo_obj.get_all_methods_classified(0)[truth.classname]
 
     def test_find_methods(self, apkinfo_obj):
         result = apkinfo_obj.find_methods(
@@ -193,8 +193,3 @@ class TestApkinfo(object):
             Bytecode(0x9956, 'move-result-object', [0]),
             Bytecode(0x9958, 'return-object', [0])
         ]
-
-    def test_delete(self, apkinfo_obj):
-        tmp = apkinfo_obj._tmp_dir
-        apkinfo_obj.__del__()
-        assert not os.path.exists(tmp)

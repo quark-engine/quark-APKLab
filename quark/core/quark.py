@@ -39,9 +39,10 @@ class Quark:
         for _ in range(search_depth):
             for leaf in tree.leaves():
                 uppers = self.apkinfo.find_upper_methods(leaf.identifier)
-                for bytecode, upper in uppers:
+                for offset, upper in uppers:
+                    bytecode = self.apkinfo.find_bytecode_by_addr(upper.dexindex, offset)
                     if not tree.contains(upper):
-                        node = tree.create_node(
+                        tree.create_node(
                             identifier=upper, data=[bytecode], parent=leaf)
                     else:
                         tree.get_node(upper).data.append(bytecode)

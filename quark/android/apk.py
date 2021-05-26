@@ -109,10 +109,10 @@ class Apkinfo(object):
 
         for tag in axml:
             label = tag.get('Name')
-            if label == 'uses-permission':
+            if label and axml.get_string(label) == 'uses-permission':
                 attrs = axml.get_attributes(tag)
 
-                if attrs is not None:
+                if attrs:
                     permission = axml.get_string(attrs[0]['Value'])
                     permission_list.add(permission)
 
@@ -223,7 +223,7 @@ class Apkinfo(object):
                 continue
 
             if 'from' in xref:
-                yield (self.find_bytecode_by_addr(method.dexindex, xref['from']), self.find_methods_by_addr(method.dexindex, xref['from']))
+                yield (xref['from'], self.find_methods_by_addr(method.dexindex, xref['from']))
             else:
                 logging.debug(
                     f'Key from was not found at searching upper methods for {method}.')
