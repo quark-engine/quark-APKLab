@@ -1,9 +1,8 @@
-import json
+import enum
 import functools
 import os.path
-import r2pipe
 
-import enum
+import r2pipe
 
 # Resource Types Definition
 # reference to https://android.googlesource.com/platform/frameworks/base/+/master/libs/androidfw/include/androidfw/ResourceTypes.h
