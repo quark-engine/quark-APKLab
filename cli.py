@@ -68,7 +68,7 @@ def main(apk, rule, thershold, output, summary):
 
     # Generate json file
     if output:
-        json.dump(quark.report.get_json_report(), output, indent=4)
+        json.dump(quark.get_json_report(), output, indent=4)
 
 
 if __name__ == '__main__':
