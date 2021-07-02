@@ -5,17 +5,18 @@ name = "pypi"
 
 [packages]
 treelib = "*"
-r2pipe = "*"
 prettytable = "*"
 tqdm = "*"
 click = "*"
+rzpipe = "*"
 
 [dev-packages]
 pytest = "*"
 black = "*"
+pytest-cov = "*"
 
 [requires]
-python_version = "3.9"
+python_version = "*"
 
 [pipenv]
 allow_prereleases = true

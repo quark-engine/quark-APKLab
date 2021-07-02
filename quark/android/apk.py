@@ -7,7 +7,7 @@ import zipfile
 from functools import cached_property, lru_cache
 from typing import DefaultDict
 
-import r2pipe
+import rzpipe
 from quark.android.axml import AxmlReader
 from quark.common.bytecode import Bytecode
 from quark.common.method import MethodId
@@ -46,13 +46,13 @@ class Apkinfo(object):
                 self._dex_list.append(os.path.join(self._tmp_dir, dex))
 
     @lru_cache()
-    def _get_r2(self, index):
-        r2 = r2pipe.open(self._dex_list[index])
-        r2.cmd("aa")
-        return r2
+    def _get_rz(self, index):
+        rz = rzpipe.open(self._dex_list[index])
+        rz.cmd("aa")
+        return rz
 
-    def r2_escape(self, string: str) -> str:
-        escapeList = [">"]
+    def rz_escape(self, string: str) -> str:
+        escapeList = "<>"
 
         result = ""
         for char in string:
@@ -132,7 +132,7 @@ class Apkinfo(object):
         if address < 0:
             return None
 
-        r2 = self._get_r2(dex_index)
+        r2 = self._get_rz(dex_index)
         section = r2.cmdj(f"iSj. @ {address}")
         if section is None or (
             section.get("name") != "constpool"
@@ -162,7 +162,7 @@ class Apkinfo(object):
 
     @lru_cache
     def get_all_methods_classified(self, dexindex):
-        r2 = self._get_r2(dexindex)
+        r2 = self._get_rz(dexindex)
 
         method_json_list = r2.cmdj("isj")
         method_dict = DefaultDict(list)
@@ -238,7 +238,7 @@ class Apkinfo(object):
         :rtype: a generator of MethodId objects
         """
 
-        r2 = self._get_r2(method.dexindex)
+        r2 = self._get_rz(method.dexindex)
 
         xrefs = r2.cmdj(f"axtj @ {method.address}")
 
@@ -257,7 +257,7 @@ class Apkinfo(object):
                 )
 
     def find_bytecode_by_addr(self, dex_index, offset):
-        r2 = self._get_r2(dex_index)
+        r2 = self._get_rz(dex_index)
 
         ins_json = r2.cmdj(f"pdj 1 @ {offset}")
 
@@ -281,7 +281,7 @@ class Apkinfo(object):
 
         if not function.is_import:
 
-            r2 = self._get_r2(function.dexindex)
+            r2 = self._get_rz(function.dexindex)
 
             instruct_flow = r2.cmdj(f"pdfj @ {function.address}")["ops"]
 
