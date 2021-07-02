@@ -1,16 +1,21 @@
 import pytest
 import xml.etree.ElementTree as et
-from quark.android.axml import AxmlReader, AxmlException, RES_XML_START_ELEMENT_TYPE, RES_XML_END_ELEMENT_TYPE
+from quark.android.axml import (
+    AxmlReader,
+    AxmlException,
+    RES_XML_START_ELEMENT_TYPE,
+    RES_XML_END_ELEMENT_TYPE,
+)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def axml_file():
-    return 'tests/sample/HippoSMS/AndroidManifest.axml'
+    return "tests/sample/HippoSMS/AndroidManifest.axml"
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def xml_file():
-    return 'tests/sample/HippoSMS/AndroidManifest.xml'
+    return "tests/sample/HippoSMS/AndroidManifest.xml"
 
 
 def test_axml_info(axml_file: str):
@@ -22,7 +27,7 @@ def test_axml_info(axml_file: str):
 
 def test_get_string(axml_file: str):
     axml = AxmlReader(axml_file)
-    assert axml.get_string(0) == 'versionCode'
+    assert axml.get_string(0) == "versionCode"
 
 
 def test_get_attributes(axml_file: str):
@@ -32,27 +37,15 @@ def test_get_attributes(axml_file: str):
     node = None
     while True:
         node = next(iterator)
-        if node['Type'] == RES_XML_START_ELEMENT_TYPE:
+        if node["Type"] == RES_XML_START_ELEMENT_TYPE:
             break
 
     attributes = axml.get_attributes(node)
 
     truths = [
-        {'Namespace': 11,
-         'Name': 0,
-         'Value': -1,
-         'Type': 16,
-         'Data': 20},
-        {'Namespace': 11,
-         'Name': 1,
-         'Value': 16,
-         'Type': 3,
-         'Data': 16},
-        {'Namespace': -1,
-         'Name': 13,
-         'Value': 15,
-         'Type': 3,
-         'Data': 15}
+        {"Namespace": 11, "Name": 0, "Value": -1, "Type": 16, "Data": 20},
+        {"Namespace": 11, "Name": 1, "Value": 16, "Type": 3, "Data": 16},
+        {"Namespace": -1, "Name": 13, "Value": 15, "Type": 3, "Data": 15},
     ]
 
     assert len(attributes) == len(truths)
@@ -71,14 +64,18 @@ def test_axml(axml_file: str, xml_file: str):
     xml = et.ElementTree(file=xml_file)
 
     def comb_ns_name(element: dict):
-        name = element['Name']
-        ns = element['Namespace']
-        return axml.get_string(name) if ns == -1 else f'{{{axml.get_string(ns)}}}{axml.get_string(name)}'
+        name = element["Name"]
+        ns = element["Namespace"]
+        return (
+            axml.get_string(name)
+            if ns == -1
+            else f"{{{axml.get_string(ns)}}}{axml.get_string(name)}"
+        )
 
     reply_it = iter(axml)
     while True:
         reply = next(reply_it)
-        if reply['Type'] == RES_XML_START_ELEMENT_TYPE:
+        if reply["Type"] == RES_XML_START_ELEMENT_TYPE:
             break
 
     attributes = axml.get_attributes(reply)
@@ -90,17 +87,17 @@ def test_axml(axml_file: str, xml_file: str):
     for attr in attributes:
         key = comb_ns_name(attr)
         assert key in truth_attrs.keys()
-        if attr['Value'] == -1:
-            assert truth_attrs[key] == str(attr['Data'])
+        if attr["Value"] == -1:
+            assert truth_attrs[key] == str(attr["Data"])
         else:
-            assert truth_attrs[key] == axml.get_string(attr['Data'])
+            assert truth_attrs[key] == axml.get_string(attr["Data"])
 
     stack = [truth]
     while len(stack) != 0:
         reply = next(reply_it)
         reply_name = comb_ns_name(reply)
 
-        if reply['Type'] == RES_XML_START_ELEMENT_TYPE:
+        if reply["Type"] == RES_XML_START_ELEMENT_TYPE:
             truth_parent = stack[-1]
             reply_attrs = axml.get_attributes(reply)
 
@@ -110,18 +107,27 @@ def test_axml(axml_file: str, xml_file: str):
                     truth_attrs = truth.attrib
                     for attr in reply_attrs:
                         key = comb_ns_name(attr)
-                        if not (key in truth_attrs.keys() and ((attr['Value'] == -1) or truth_attrs[key] == axml.get_string(attr['Value']))):
+                        if not (
+                            key in truth_attrs.keys()
+                            and (
+                                (attr["Value"] == -1)
+                                or truth_attrs[key]
+                                == axml.get_string(attr["Value"])
+                            )
+                        ):
                             break
                     else:
                         found = truth
                         break
 
             if found is None:
-                assert False, f'Reply {comb_ns_name(reply)}({reply}) was not match list {[truth.tag for truth in truth_parent]} which parent is {truth_parent.tag}'
+                assert (
+                    False
+                ), f"Reply {comb_ns_name(reply)}({reply}) was not match list {[truth.tag for truth in truth_parent]} which parent is {truth_parent.tag}"
 
             stack.append(truth)
 
-        elif reply['Type'] == RES_XML_END_ELEMENT_TYPE:
+        elif reply["Type"] == RES_XML_END_ELEMENT_TYPE:
             truth = stack.pop()
 
             assert reply_name == truth.tag

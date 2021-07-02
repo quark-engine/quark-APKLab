@@ -10,13 +10,17 @@ CONF_STAGE_3 = 3
 CONF_STAGE_4 = 4
 CONF_STAGE_5 = 5
 
-Sequence = namedtuple(
-    'Sequence', 'parent, tree_list')
+Sequence = namedtuple("Sequence", "parent, tree_list")
 
 
 class Behavior:
-    __slots__ = ['related_rule', 'reached_stage',
-                 'api_objects', 'sequence', 'registers']
+    __slots__ = [
+        "related_rule",
+        "reached_stage",
+        "api_objects",
+        "sequence",
+        "registers",
+    ]
 
     def __init__(self, rule: QuarkRule):
         self.related_rule = rule
@@ -28,7 +32,6 @@ class Behavior:
 
 
 class QuarkAnalysis(object):
-
     def __init__(self):
         self._rule_results = {}
         self._score_sum = 0
@@ -67,50 +70,61 @@ class QuarkAnalysis(object):
         thresholds = self.get_level_threshold()
 
         if self._weighted_sum <= thresholds[1]:
-            return 'Low Risk'
+            return "Low Risk"
         elif self._weighted_sum <= thresholds[3]:
-            return 'Mederate Risk'
+            return "Mederate Risk"
         else:
-            return 'High Risk'
+            return "High Risk"
 
     def get_json_report(self):
         crime_list = []
         for rule, behavior_list in self._rule_results.items():
             max_stage = max(
-                (behavior.reached_stage for behavior in behavior_list))
+                (behavior.reached_stage for behavior in behavior_list)
+            )
             report = {
-                'crime': rule.crime,
-                'score': rule.score,
-                'weight': self.get_rule_confidence(rule, max_stage),
-                'confidence': f'{max_stage/CONF_STAGE_5 * 100}%'
+                "crime": rule.crime,
+                "score": rule.score,
+                "weight": self.get_rule_confidence(rule, max_stage),
+                "confidence": f"{max_stage/CONF_STAGE_5 * 100}%",
             }
 
             if max_stage >= CONF_STAGE_1:
-                report['permissions'] = rule.permission
+                report["permissions"] = rule.permission
 
             if max_stage >= CONF_STAGE_2:
-                report['matched_api'] = rule.api
+                report["matched_api"] = rule.api
 
             if max_stage >= CONF_STAGE_3:
-                report['combination'] = list([self._generate_invoke_report(
-                    beh.sequence) for beh in behavior_list if beh.reached_stage == CONF_STAGE_3])
+                report["combination"] = list(
+                    [
+                        self._generate_invoke_report(beh.sequence)
+                        for beh in behavior_list
+                        if beh.reached_stage == CONF_STAGE_3
+                    ]
+                )
 
             if max_stage >= CONF_STAGE_4:
-                report['sequence'] = list([self._generate_invoke_report(
-                    beh.sequence) for beh in behavior_list if beh.reached_stage >= CONF_STAGE_4])
+                report["sequence"] = list(
+                    [
+                        self._generate_invoke_report(beh.sequence)
+                        for beh in behavior_list
+                        if beh.reached_stage >= CONF_STAGE_4
+                    ]
+                )
 
             if max_stage >= CONF_STAGE_5:
-                report['register'] = []
+                report["register"] = []
 
                 for behavior in behavior_list:
                     if behavior.reached_stage != CONF_STAGE_5:
                         continue
                     register_report = {
-                        'parent': str(behavior.sequence.parent),
-                        'reg_index': behavior.registers
+                        "parent": str(behavior.sequence.parent),
+                        "reg_index": behavior.registers,
                     }
 
-                    report['register'].append(register_report)
+                    report["register"].append(register_report)
 
             crime_list.append(report)
 
@@ -127,10 +141,7 @@ class QuarkAnalysis(object):
         parent = sequence_obj.parent
         tree_list = sequence_obj.tree_list
 
-        call_graph = {
-            'parent': str(parent),
-            'call_graph': []
-        }
+        call_graph = {"parent": str(parent), "call_graph": []}
 
         for tree in tree_list:
             path = []
@@ -140,14 +151,16 @@ class QuarkAnalysis(object):
                     break
 
                 method_item = {
-                    'caller': str(method),
-                    'invoke_at': [str(bytecode) for bytecode in tree.get_node(method).data]
+                    "caller": str(method),
+                    "invoke_at": [
+                        str(bytecode)
+                        for bytecode in tree.get_node(method).data
+                    ],
                 }
                 path.append(method_item)
 
-            call_graph['call_graph'].append({
-                'api': str(tree.root),
-                'path': path
-            })
+            call_graph["call_graph"].append(
+                {"api": str(tree.root), "path": path}
+            )
 
         return call_graph

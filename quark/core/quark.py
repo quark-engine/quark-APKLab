@@ -7,9 +7,17 @@ from treelib import Tree
 
 from quark.android.apk import Apkinfo
 from quark.common.method import MethodId
-from quark.core.analysis import (CONF_STAGE_1, CONF_STAGE_2, CONF_STAGE_3,
-                                 CONF_STAGE_4, CONF_STAGE_5, CONF_STAGE_NONE,
-                                 Behavior, QuarkAnalysis, Sequence)
+from quark.core.analysis import (
+    CONF_STAGE_1,
+    CONF_STAGE_2,
+    CONF_STAGE_3,
+    CONF_STAGE_4,
+    CONF_STAGE_5,
+    CONF_STAGE_NONE,
+    Behavior,
+    QuarkAnalysis,
+    Sequence,
+)
 from quark.core.rule import QuarkRule
 
 MAX_REG_COUNT = 257
@@ -40,40 +48,86 @@ class Quark:
             for leaf in tree.leaves():
                 uppers = self.apkinfo.find_upper_methods(leaf.identifier)
                 for offset, upper in uppers:
-                    bytecode = self.apkinfo.find_bytecode_by_addr(upper.dexindex, offset)
+                    bytecode = self.apkinfo.find_bytecode_by_addr(
+                        upper.dexindex, offset
+                    )
                     if not tree.contains(upper):
                         tree.create_node(
-                            identifier=upper, data=[bytecode], parent=leaf)
+                            identifier=upper, data=[bytecode], parent=leaf
+                        )
                     else:
                         tree.get_node(upper).data.append(bytecode)
 
         return tree
 
-    def check_register_in_method(self, method: MethodId, registers, start_bytecode=None, end_bytecode=None, reset_bytecodes=None):
+    def check_register_in_method(
+        self,
+        method: MethodId,
+        registers,
+        start_bytecode=None,
+        end_bytecode=None,
+        reset_bytecodes=None,
+    ):
         old_registers = copy(registers)
         # Fetch target ranger of instructions
-        instructions = [ins for ins in self.apkinfo.get_function_bytecode(
-            method, start_bytecode.address if start_bytecode else -1, end_bytecode.address if end_bytecode else -1)]
+        instructions = [
+            ins
+            for ins in self.apkinfo.get_function_bytecode(
+                method,
+                start_bytecode.address if start_bytecode else -1,
+                end_bytecode.address if end_bytecode else -1,
+            )
+        ]
         instructions.reverse()
 
         # Apply all opcode reversely and remove those were override
         TRANSITION_TYPE_1 = (
             # If destination register exists. It will appear at the least.
             # Otherwise , destination is the parameter or the return register.
-            'invoke', 'filled', 'return'
+            "invoke",
+            "filled",
+            "return",
         )
         TRANSITION_TYPE_2 = (
             # First register is destination, second one is source.
-            'move', 'neg', 'not', 'int', 'long', 'float', 'double', 'array'
+            "move",
+            "neg",
+            "not",
+            "int",
+            "long",
+            "float",
+            "double",
+            "array",
         )
         NEW_TYPE = (
             # Given registers will be override.
-            'const', 'new'
+            "const",
+            "new",
         )
         NOP_TYPE = (
             # Instructions needed to skip.
-            'monitor', 'instance', 'goto', 'if', 'add', 'sub', 'rsub', 'mul', 'div', 'rem', 'and', 'or', 'xor', 'shl',
-            'shr', 'ushr', 'check', 'cmp', 'iget', 'iput', 'aget', 'aput'
+            "monitor",
+            "instance",
+            "goto",
+            "if",
+            "add",
+            "sub",
+            "rsub",
+            "mul",
+            "div",
+            "rem",
+            "and",
+            "or",
+            "xor",
+            "shl",
+            "shr",
+            "ushr",
+            "check",
+            "cmp",
+            "iget",
+            "iput",
+            "aget",
+            "aput",
         )
 
         reset_offsets = (bytecode.address for bytecode in reset_bytecodes)
@@ -84,10 +138,12 @@ class Quark:
             # Combine two sets of registers if a reset offset comes
             if ins.address in reset_offsets:
                 for reg_index in range(MAX_REG_COUNT):
-                    registers[reg_index] = registers[reg_index] ^ old_registers[reg_index]
+                    registers[reg_index] = (
+                        registers[reg_index] ^ old_registers[reg_index]
+                    )
                 continue
 
-            prefix = ins.mnemonic.split('-')[0]
+            prefix = ins.mnemonic.split("-")[0]
 
             # Transition
             if prefix in TRANSITION_TYPE_1:
@@ -127,7 +183,11 @@ class Quark:
             current_node = invoke_nodes.pop()
             first_bytecode = min(current_node.data)
             self.check_register_in_method(
-                current_node.identifier, registers, start_bytecode=first_bytecode, reset_bytecodes=current_node.data)
+                current_node.identifier,
+                registers,
+                start_bytecode=first_bytecode,
+                reset_bytecodes=current_node.data,
+            )
 
         return registers
 
@@ -141,7 +201,11 @@ class Quark:
             current_node = invoke_nodes.pop()
             least_bytecode = max(current_node.data)
             self.check_register_in_method(
-                current_node.identifier, registers, end_bytecode=least_bytecode, reset_bytecodes=current_node.data)
+                current_node.identifier,
+                registers,
+                end_bytecode=least_bytecode,
+                reset_bytecodes=current_node.data,
+            )
 
         return registers
 
@@ -150,10 +214,14 @@ class Quark:
         second_tree = sequence.tree_list[1]
         parent = sequence.parent
 
-        first_node = [first_tree.get_node(method)
-                      for method in first_tree.rsearch(parent)]
-        second_node = [second_tree.get_node(method)
-                       for method in second_tree.rsearch(parent)]
+        first_node = [
+            first_tree.get_node(method)
+            for method in first_tree.rsearch(parent)
+        ]
+        second_node = [
+            second_tree.get_node(method)
+            for method in second_tree.rsearch(parent)
+        ]
 
         if registers is None:
             # Setup the registers and adjust end_offset
@@ -162,7 +230,8 @@ class Quark:
 
             if not least_bytecode:
                 logging.warning(
-                    f'Unable fetch bytecode at {least_bytecode} with {upper_node.identifier}, skip this scanning.')
+                    f"Unable fetch bytecode at {least_bytecode} with {upper_node.identifier}, skip this scanning."
+                )
                 return [False for _ in range(MAX_REG_COUNT)]
 
             registers = [False for _ in range(MAX_REG_COUNT)]
@@ -174,14 +243,20 @@ class Quark:
         reset_offsets = second_tree.get_node(parent).data
         least_invoke_for_second_api = max(reset_offsets)
 
-        if(first_invoke_for_first_api >= least_invoke_for_second_api):
+        if first_invoke_for_first_api >= least_invoke_for_second_api:
             logging.error(
-                f'Address for first api is less than address for second api @ {parent}')
+                f"Address for first api is less than address for second api @ {parent}"
+            )
             return [False]
 
         registers = self.check_register_upward(second_node, registers)
         registers = self.check_register_in_method(
-            parent, registers, first_invoke_for_first_api, least_invoke_for_second_api, reset_offsets)
+            parent,
+            registers,
+            first_invoke_for_first_api,
+            least_invoke_for_second_api,
+            reset_offsets,
+        )
         registers = self.check_register_downward(first_node, registers)
 
         return registers
@@ -191,7 +266,10 @@ class Quark:
 
         # Stage 1 - Check Permission
         passed_permissions = (
-            permission for permission in rule.permission if permission in self.apkinfo.permissions)
+            permission
+            for permission in rule.permission
+            if permission in self.apkinfo.permissions
+        )
 
         if len(list(passed_permissions)) != len(rule.permission):
             return CONF_STAGE_NONE
@@ -199,7 +277,8 @@ class Quark:
         api_object = []
         for api in rule.api:
             methods = self.apkinfo.find_methods(
-                api['class'], api['method'], api['descriptor'])
+                api["class"], api["method"], api["descriptor"]
+            )
             try:
                 api_object.append(next(methods))
             except StopIteration:
@@ -208,25 +287,31 @@ class Quark:
         behavior.api_objects = api_object
 
         # Stage 2 - All native apis exist
-        return CONF_STAGE_1 if len(api_object) < len(rule.api) else CONF_STAGE_2
+        return (
+            CONF_STAGE_1 if len(api_object) < len(rule.api) else CONF_STAGE_2
+        )
 
     def run_sequence_phase(self, behavior: Behavior):
         # Check if apis exist in the same call graph
-        trees = [self.get_invoke_tree(api)
-                 for api in behavior.api_objects]  # tree list
+        trees = [
+            self.get_invoke_tree(api) for api in behavior.api_objects
+        ]  # tree list
 
         # Test each combination of trees
         for first_index in range(len(trees)):
-            for second_index in range(first_index+1, len(trees)):
+            for second_index in range(first_index + 1, len(trees)):
                 first_tree = trees[first_index]
                 second_tree = trees[second_index]
 
                 first_all_methods = {
-                    node.identifier for node in first_tree.all_nodes()}
+                    node.identifier for node in first_tree.all_nodes()
+                }
                 second_all_methods = {
-                    node.identifier for node in second_tree.all_nodes()}
+                    node.identifier for node in second_tree.all_nodes()
+                }
                 common_parents = first_all_methods.intersection(
-                    second_all_methods)
+                    second_all_methods
+                )
 
                 # Stage 3 - Check combination
                 # Stage 4 - Check sequence
@@ -236,14 +321,20 @@ class Quark:
                 for parent in common_parents:
                     # Test sequence of invoke addresses from two methods
                     first_bytecode_for_first_method = min(
-                        first_tree.get_node(parent).data)
+                        first_tree.get_node(parent).data
+                    )
                     least_bytecode_for_second_method = max(
-                        second_tree.get_node(parent).data)
+                        second_tree.get_node(parent).data
+                    )
 
                     cloned_behavior = copy(behavior)
                     cloned_behavior.sequence = Sequence(
-                        parent, (trees[first_index], trees[second_index]))
-                    if first_bytecode_for_first_method < least_bytecode_for_second_method:
+                        parent, (trees[first_index], trees[second_index])
+                    )
+                    if (
+                        first_bytecode_for_first_method
+                        < least_bytecode_for_second_method
+                    ):
                         passing_4_list.append(cloned_behavior)
                     else:
                         passing_3_list.append(cloned_behavior)
@@ -256,7 +347,10 @@ class Quark:
 
         if any(registers):
             critical_indexes = [
-                index for index, is_critical in enumerate(registers) if is_critical]
+                index
+                for index, is_critical in enumerate(registers)
+                if is_critical
+            ]
 
             behavior.registers = critical_indexes
             return CONF_STAGE_5
@@ -286,7 +380,8 @@ class Quark:
                     continue
 
                 passing_3_list, passing_4_list = self.run_sequence_phase(
-                    behavior)
+                    behavior
+                )
 
                 if passing_3_list or passing_4_list:
                     for passing in passing_3_list:
@@ -306,10 +401,10 @@ class Quark:
 
     def get_json_report(self):
         return {
-            'md5': self.apkinfo.md5,
-            'apk_filename': self.apkinfo.filename,
-            'size_bytes': self.apkinfo.filesize,
-            'threat_level': self._report.get_thread_level(),
-            'total_score': self._report.weighted_sum,
-            'crimes': self._report.get_json_report()
+            "md5": self.apkinfo.md5,
+            "apk_filename": self.apkinfo.filename,
+            "size_bytes": self.apkinfo.filesize,
+            "threat_level": self._report.get_thread_level(),
+            "total_score": self._report.weighted_sum,
+            "crimes": self._report.get_json_report(),
         }

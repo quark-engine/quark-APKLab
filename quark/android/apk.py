@@ -35,27 +35,29 @@ class Apkinfo(object):
         # Extract file to tmp dir
         with zipfile.ZipFile(self._filepath) as apk:
             # Extract manifest
-            apk.extract('AndroidManifest.xml', path=self._tmp_dir)
+            apk.extract("AndroidManifest.xml", path=self._tmp_dir)
             # Extract all dex files
             self._dex_list = []
-            for dex in filter(lambda f: f.startswith(
-                    'classes') and f.endswith('.dex'), apk.namelist()):
+            for dex in filter(
+                lambda f: f.startswith("classes") and f.endswith(".dex"),
+                apk.namelist(),
+            ):
                 apk.extract(dex, path=self._tmp_dir)
                 self._dex_list.append(os.path.join(self._tmp_dir, dex))
 
     @lru_cache()
     def _get_r2(self, index):
         r2 = r2pipe.open(self._dex_list[index])
-        r2.cmd('aa')
+        r2.cmd("aa")
         return r2
 
     def r2_escape(self, string: str) -> str:
-        escapeList = ['>']
+        escapeList = [">"]
 
-        result = ''
+        result = ""
         for char in string:
             if char in escapeList:
-                result = result + '\\'
+                result = result + "\\"
 
             result = result + char
 
@@ -90,7 +92,7 @@ class Apkinfo(object):
         """
         Return a path to extracted manifest file.
         """
-        return os.path.join(self._tmp_dir, 'AndroidManifest.xml')
+        return os.path.join(self._tmp_dir, "AndroidManifest.xml")
 
     @property
     def dex_list(self):
@@ -108,12 +110,12 @@ class Apkinfo(object):
         permission_list = set()
 
         for tag in axml:
-            label = tag.get('Name')
-            if label and axml.get_string(label) == 'uses-permission':
+            label = tag.get("Name")
+            if label and axml.get_string(label) == "uses-permission":
                 attrs = axml.get_attributes(tag)
 
                 if attrs:
-                    permission = axml.get_string(attrs[0]['Value'])
+                    permission = axml.get_string(attrs[0]["Value"])
                     permission_list.add(permission)
 
         return permission_list
@@ -131,49 +133,69 @@ class Apkinfo(object):
             return None
 
         r2 = self._get_r2(dex_index)
-        section = r2.cmdj(f'iSj. @ {address}')
-        if section is None or (section.get('name') != 'constpool' and section.get('name') != 'code'):
+        section = r2.cmdj(f"iSj. @ {address}")
+        if section is None or (
+            section.get("name") != "constpool"
+            and section.get("name") != "code"
+        ):
             return None
 
-        symbol = r2.cmdj(f'isj. @ {address}')
-        if symbol['type'] != 'FUNC':
+        symbol = r2.cmdj(f"isj. @ {address}")
+        if symbol["type"] != "FUNC":
             return None
 
-        signature = symbol['realname']
-        classname = signature[:signature.index('.method.')] + ';'
-        methodname = signature[signature.index(
-            '.method.') + 8:signature.index('(')]
-        descriptor = signature[signature.index('('):]
+        signature = symbol["realname"]
+        classname = signature[: signature.index(".method.")] + ";"
+        methodname = signature[
+            signature.index(".method.") + 8 : signature.index("(")
+        ]
+        descriptor = signature[signature.index("(") :]
 
-        return MethodId(symbol['vaddr'], dex_index, classname, methodname, descriptor, symbol['is_imported'])
+        return MethodId(
+            symbol["vaddr"],
+            dex_index,
+            classname,
+            methodname,
+            descriptor,
+            symbol["is_imported"],
+        )
 
     @lru_cache
     def get_all_methods_classified(self, dexindex):
         r2 = self._get_r2(dexindex)
 
-        method_json_list = r2.cmdj('isj')
+        method_json_list = r2.cmdj("isj")
         method_dict = DefaultDict(list)
         for json_obj in method_json_list:
-            if json_obj.get('type') != 'FUNC':
+            if json_obj.get("type") != "FUNC":
                 continue
 
-            full_name = json_obj['realname']
+            full_name = json_obj["realname"]
             classname, method_descriptor = full_name.split(
-                '.method.', maxsplit=1)
-            classname = classname + ';'
+                ".method.", maxsplit=1
+            )
+            classname = classname + ";"
 
-            methodname = method_descriptor[:method_descriptor.index('(')]
-            descriptor = method_descriptor[method_descriptor.index('('):]
+            methodname = method_descriptor[: method_descriptor.index("(")]
+            descriptor = method_descriptor[method_descriptor.index("(") :]
 
-            is_imported = json_obj['is_imported']
+            is_imported = json_obj["is_imported"]
 
             method = MethodId(
-                json_obj['vaddr'], dexindex, classname, methodname, descriptor, is_imported)
+                json_obj["vaddr"],
+                dexindex,
+                classname,
+                methodname,
+                descriptor,
+                is_imported,
+            )
             method_dict[classname].append(method)
 
         return method_dict
 
-    def find_methods(self, classname, methodname='', descriptor='', dex_index=None):
+    def find_methods(
+        self, classname, methodname="", descriptor="", dex_index=None
+    ):
         """
         Find a list of methods matching given infomations.
 
@@ -192,7 +214,9 @@ class Apkinfo(object):
         """
 
         def method_filter(method: MethodId):
-            return (not methodname or methodname == method.methodname) and (not descriptor or descriptor == method.descriptor)
+            return (not methodname or methodname == method.methodname) and (
+                not descriptor or descriptor == method.descriptor
+            )
 
         if dex_index:
             dex_list = [dex_index]
@@ -206,7 +230,7 @@ class Apkinfo(object):
 
     def find_upper_methods(self, method: MethodId):
         """
-        Return the corresponding xref methods from given method. 
+        Return the corresponding xref methods from given method.
 
         :param method: a method object
         :type method: MethodId
@@ -216,30 +240,36 @@ class Apkinfo(object):
 
         r2 = self._get_r2(method.dexindex)
 
-        xrefs = r2.cmdj(f'axtj @ {method.address}')
+        xrefs = r2.cmdj(f"axtj @ {method.address}")
 
         for xref in xrefs:
-            if xref['type'] != 'CALL':
+            if xref["type"] != "CALL":
                 continue
 
-            if 'from' in xref:
-                yield (xref['from'], self.find_methods_by_addr(method.dexindex, xref['from']))
+            if "from" in xref:
+                yield (
+                    xref["from"],
+                    self.find_methods_by_addr(method.dexindex, xref["from"]),
+                )
             else:
                 logging.debug(
-                    f'Key from was not found at searching upper methods for {method}.')
+                    f"Key from was not found at searching upper methods for {method}."
+                )
 
     def find_bytecode_by_addr(self, dex_index, offset):
         r2 = self._get_r2(dex_index)
 
-        ins_json = r2.cmdj(f'pdj 1 @ {offset}')
+        ins_json = r2.cmdj(f"pdj 1 @ {offset}")
 
-        if ins_json and 'disasm' in ins_json[0]:
+        if ins_json and "disasm" in ins_json[0]:
             ins = ins_json[0]
-            return Bytecode.get_by_smali(ins['offset'], ins['disasm'])
+            return Bytecode.get_by_smali(ins["offset"], ins["disasm"])
         else:
             return None
 
-    def get_function_bytecode(self, function: MethodId, start_offset=-1, end_offset=-1):
+    def get_function_bytecode(
+        self, function: MethodId, start_offset=-1, end_offset=-1
+    ):
         """
         Return the corresponding bytecode according to the address of function in the given MethodId object.
 
@@ -253,17 +283,17 @@ class Apkinfo(object):
 
             r2 = self._get_r2(function.dexindex)
 
-            instruct_flow = r2.cmdj(f'pdfj @ {function.address}')['ops']
+            instruct_flow = r2.cmdj(f"pdfj @ {function.address}")["ops"]
 
             if instruct_flow:
 
                 for ins in instruct_flow:
-                    if ins['offset'] < start_offset:
+                    if ins["offset"] < start_offset:
                         continue
-                    if ins['offset'] >= end_offset >= 0:
+                    if ins["offset"] >= end_offset >= 0:
                         break
 
-                    yield Bytecode.get_by_smali(ins['offset'], ins['disasm'])
+                    yield Bytecode.get_by_smali(ins["offset"], ins["disasm"])
 
     def check_valid(self):
         pass

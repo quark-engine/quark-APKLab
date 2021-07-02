@@ -20,7 +20,7 @@ RES_XML_END_NAMESPACE_TYPE = 0x0101
 RES_XML_START_ELEMENT_TYPE = 0x0102
 RES_XML_END_ELEMENT_TYPE = 0x0103
 RES_XML_CDATA_TYPE = 0x0104
-RES_XML_LAST_CHUNK_TYPE = 0x017f
+RES_XML_LAST_CHUNK_TYPE = 0x017F
 RES_XML_RESOURCE_MAP_TYPE = 0x0180
 
 # Chunk types in RES_TABLE_TYPE
@@ -33,26 +33,26 @@ RES_TABLE_OVERLAYABLE_POLICY_TYPE = 0x0205
 
 
 class Res_value_type(enum.Enum):
-    TYPE_NULL = 0x00,
-    TYPE_REFERENCE = 0x01,
-    TYPE_ATTRIBUTE = 0x02,
-    TYPE_STRING = 0x03,
-    TYPE_FLOAT = 0x04,
-    TYPE_DIMENSION = 0x05,
-    TYPE_FRACTION = 0x06,
-    TYPE_DYNAMIC_REFERENCE = 0x07,
-    TYPE_DYNAMIC_ATTRIBUTE = 0x08,
-    TYPE_FIRST_INT = 0x10,
-    TYPE_INT_DEC = 0x10,
-    TYPE_INT_HEX = 0x11,
-    TYPE_INT_BOOLEAN = 0x12,
-    TYPE_FIRST_COLOR_INT = 0x1c,
-    TYPE_INT_COLOR_ARGB8 = 0x1c,
-    TYPE_INT_COLOR_RGB8 = 0x1d,
-    TYPE_INT_COLOR_ARGB4 = 0x1e,
-    TYPE_INT_COLOR_RGB4 = 0x1f,
-    TYPE_LAST_COLOR_INT = 0x1f,
-    TYPE_LAST_INT = 0x1f
+    TYPE_NULL = (0x00,)
+    TYPE_REFERENCE = (0x01,)
+    TYPE_ATTRIBUTE = (0x02,)
+    TYPE_STRING = (0x03,)
+    TYPE_FLOAT = (0x04,)
+    TYPE_DIMENSION = (0x05,)
+    TYPE_FRACTION = (0x06,)
+    TYPE_DYNAMIC_REFERENCE = (0x07,)
+    TYPE_DYNAMIC_ATTRIBUTE = (0x08,)
+    TYPE_FIRST_INT = (0x10,)
+    TYPE_INT_DEC = (0x10,)
+    TYPE_INT_HEX = (0x11,)
+    TYPE_INT_BOOLEAN = (0x12,)
+    TYPE_FIRST_COLOR_INT = (0x1C,)
+    TYPE_INT_COLOR_ARGB8 = (0x1C,)
+    TYPE_INT_COLOR_RGB8 = (0x1D,)
+    TYPE_INT_COLOR_ARGB4 = (0x1E,)
+    TYPE_INT_COLOR_RGB4 = (0x1F,)
+    TYPE_LAST_COLOR_INT = (0x1F,)
+    TYPE_LAST_INT = 0x1F
 
 
 class AxmlException(Exception):
@@ -76,20 +76,21 @@ class AxmlReader(object):
         :param struct_path: path lead to r2 format definition file , defaults to None
         :type struct_path: str, optional
 
-        :raises AxmlException: the file is not in AXML format, or is broken. 
+        :raises AxmlException: the file is not in AXML format, or is broken.
         """
         if struct_path is None:
             directory = os.path.dirname(__file__)
-            struct_path = os.path.join(directory, 'struct/axml')
+            struct_path = os.path.join(directory, "struct/axml")
 
         if not os.path.isfile(struct_path):
             raise AxmlException(
-                f'Cannot find Radare2 format definition file in {struct_path}')
+                f"Cannot find Radare2 format definition file in {struct_path}"
+            )
 
         self._r2 = r2pipe.open(file_path)
-        self._r2.cmd(f'pfo {struct_path}')
+        self._r2.cmd(f"pfo {struct_path}")
 
-        self._file_size = int(self._r2.cmd('i~size[1]'), 16)
+        self._file_size = int(self._r2.cmd("i~size[1]"), 16)
         self._ptr = 0
 
         self._cache = {}
@@ -100,70 +101,76 @@ class AxmlReader(object):
             raise AxmlException("Filesize exceeds theoretical lower bound.")
 
         # File Header
-        header = self._r2.cmdj('pfj axml_ResChunk_header @ 0x0')
+        header = self._r2.cmdj("pfj axml_ResChunk_header @ 0x0")
 
-        self._data_type = header[0]['value']
-        self._axml_size = header[2]['value']
-        header_size = header[1]['value']
+        self._data_type = header[0]["value"]
+        self._axml_size = header[2]["value"]
+        header_size = header[1]["value"]
 
         if self._data_type != RES_XML_TYPE or header_size != 0x8:
             raise AxmlException(
-                f"Error parsing first header(type: {self._data_type}, size: {header_size}).")
+                f"Error parsing first header(type: {self._data_type}, size: {header_size})."
+            )
 
-        if (self._axml_size > self._file_size):
+        if self._axml_size > self._file_size:
             raise AxmlException(
-                f'Decleared size ({self._axml_size} bytes) is larger than total size({self._file_size}).')
+                f"Decleared size ({self._axml_size} bytes) is larger than total size({self._file_size})."
+            )
 
-        self._ptr = self._ptr+8
+        self._ptr = self._ptr + 8
         if self._ptr >= self._axml_size:
             return
 
         # String Pool
-        string_pool_header = self._r2.cmdj('pfj axml_ResStringPool_header @ 8')
+        string_pool_header = self._r2.cmdj("pfj axml_ResStringPool_header @ 8")
 
-        string_pool_size = string_pool_header[0]['value'][2]['value']
+        string_pool_size = string_pool_header[0]["value"][2]["value"]
 
         if string_pool_size > self._axml_size - self._ptr:
             raise AxmlException(
-                f'Error parsing string pool, there should be {string_pool_size} bytes but only {self._axml_size - self._ptr} bytes.')
+                f"Error parsing string pool, there should be {string_pool_size} bytes but only {self._axml_size - self._ptr} bytes."
+            )
 
-        header = string_pool_header[0]['value']
-        header_type = header[0]['value']
-        header_size = header[1]['value']
+        header = string_pool_header[0]["value"]
+        header_type = header[0]["value"]
+        header_size = header[1]["value"]
 
         if header_type != RES_STRING_POOL_TYPE:
             raise AxmlException(
-                f'Error parsing string pool, expect string pool data at {self._ptr} bytes.')
+                f"Error parsing string pool, expect string pool data at {self._ptr} bytes."
+            )
 
         if header_size != 28:
             raise AxmlException(
-                f'Error parsing string pool, heardsize should be 16 bytes rather than { header_size } bytes.')
+                f"Error parsing string pool, heardsize should be 16 bytes rather than { header_size } bytes."
+            )
 
         self._stringCount = string_pool_header[1]["value"]
         stringStart = string_pool_header[4]["value"]
 
-        self._r2.cmd(f'f string_pool_header @ 0x8 ')
+        self._r2.cmd(f"f string_pool_header @ 0x8 ")
         string_pool_index = header_size + self._ptr
-        self._r2.cmd(f'f string_pool_index @ { string_pool_index }')
+        self._r2.cmd(f"f string_pool_index @ { string_pool_index }")
         string_pool_data = stringStart + self._ptr
-        self._r2.cmd(f'f string_pool_data @ { string_pool_data }')
+        self._r2.cmd(f"f string_pool_data @ { string_pool_data }")
 
         self._ptr = self._ptr + string_pool_size
         if self._ptr >= self._axml_size:
             return
 
         # Resource Map (Optional)
-        header = self._r2.cmdj(f'pfj axml_ResChunk_header @ {self._ptr}')
+        header = self._r2.cmdj(f"pfj axml_ResChunk_header @ {self._ptr}")
 
-        header_type = header[0]['value']
-        map_size = header[2]['value']
+        header_type = header[0]["value"]
+        map_size = header[2]["value"]
 
         if header_type == RES_XML_RESOURCE_MAP_TYPE:
             # Skip all the resource map
 
             if map_size > self._axml_size - self._ptr:
                 raise AxmlException(
-                    f'Map size should be {map_size} bytes rather than {self._axml_size - self._ptr} bytes.')
+                    f"Map size should be {map_size} bytes rather than {self._axml_size - self._ptr} bytes."
+                )
 
             self._ptr = self._ptr + map_size
             if self._ptr >= self._axml_size:
@@ -179,57 +186,63 @@ class AxmlReader(object):
         :rtype: dict
         """
 
-        while (self._axml_size - self._ptr >= 16):
-            header = self._r2.cmdj(f'pfj axml_ResXMLTree_node @ {self._ptr}')
+        while self._axml_size - self._ptr >= 16:
+            header = self._r2.cmdj(f"pfj axml_ResXMLTree_node @ {self._ptr}")
 
-            node_type = header[0]['value'][0]['value']
-            header_size = header[0]['value'][1]['value']
-            node_size = header[0]['value'][2]['value']
+            node_type = header[0]["value"][0]["value"]
+            header_size = header[0]["value"][1]["value"]
+            node_size = header[0]["value"][2]["value"]
 
             if header_size != 16:
                 raise AxmlException(
-                    f'heardsize should be 16 bytes rather than { header_size } bytes.')
+                    f"heardsize should be 16 bytes rather than { header_size } bytes."
+                )
 
             if node_size > self._axml_size - self._ptr:
                 raise AxmlException(
-                    f'Not enough data left, need {node_size} bytes but {self._axml_size - self._ptr} bytes left.')
+                    f"Not enough data left, need {node_size} bytes but {self._axml_size - self._ptr} bytes left."
+                )
 
             ext_ptr = self._ptr + 16
 
-            node = {
-                'Address': self._ptr,
-                'Type': node_type
-            }
+            node = {"Address": self._ptr, "Type": node_type}
 
             if node_type == RES_XML_START_ELEMENT_TYPE:
                 ext = self._r2.cmdj(
-                    f'pfj axml_ResXMLTree_attrExt @ { ext_ptr }')
+                    f"pfj axml_ResXMLTree_attrExt @ { ext_ptr }"
+                )
 
-                node['Namespace'] = ext[0]['value'][0]['value']
-                node['Name'] = ext[1]['value'][0]['value']
+                node["Namespace"] = ext[0]["value"][0]["value"]
+                node["Name"] = ext[1]["value"][0]["value"]
 
                 # Attributes
                 # node['AttrCount'] = ext[4]['value']
 
             elif node_type == RES_XML_END_ELEMENT_TYPE:
                 ext = self._r2.cmdj(
-                    f'pfj axml_ResXMLTree_endElementExt @ { ext_ptr }')
+                    f"pfj axml_ResXMLTree_endElementExt @ { ext_ptr }"
+                )
 
-                node['Namespace'] = ext[0]['value'][0]['value']
-                node['Name'] = ext[1]['value'][0]['value']
+                node["Namespace"] = ext[0]["value"][0]["value"]
+                node["Name"] = ext[1]["value"][0]["value"]
 
-            elif node_type == RES_XML_START_NAMESPACE_TYPE or node_type == RES_XML_END_NAMESPACE_TYPE:
+            elif (
+                node_type == RES_XML_START_NAMESPACE_TYPE
+                or node_type == RES_XML_END_NAMESPACE_TYPE
+            ):
                 ext = self._r2.cmdj(
-                    f'pfj axml_ResXMLTree_namespaceExt @ { ext_ptr }')
+                    f"pfj axml_ResXMLTree_namespaceExt @ { ext_ptr }"
+                )
 
-                node['Prefix'] = ext[0]['value'][0]['value']
-                node['Uri'] = ext[1]['value'][0]['value']
+                node["Prefix"] = ext[0]["value"][0]["value"]
+                node["Uri"] = ext[1]["value"][0]["value"]
 
             elif node_type == RES_XML_CDATA_TYPE:
                 ext = self._r2.cmdj(
-                    f'pfj axml_ResXMLTree_cdataExt @ { ext_ptr }')
+                    f"pfj axml_ResXMLTree_cdataExt @ { ext_ptr }"
+                )
 
-                node['Data'] = ext[0]['value'][0]['value']
+                node["Data"] = ext[0]["value"][0]["value"]
                 # typedData
 
             else:
@@ -275,7 +288,8 @@ class AxmlReader(object):
             return None
 
         return self._r2.cmdj(
-            f'pfj Z @ string_pool_data + `pfv n4 @ string_pool_index+ {index}*4` + 2')[0]['string']
+            f"pfj Z @ string_pool_data + `pfv n4 @ string_pool_index+ {index}*4` + 2"
+        )[0]["string"]
 
     def get_attributes(self, node):
         """Return attributes that are related to the given node.
@@ -288,27 +302,30 @@ class AxmlReader(object):
         :return: a list of dicts represent as attributes
         :rtype: list
         """
-        if node['Type'] != RES_XML_START_ELEMENT_TYPE:
+        if node["Type"] != RES_XML_START_ELEMENT_TYPE:
             return None
-        extAddress = int(node['Address']) + 16
+        extAddress = int(node["Address"]) + 16
 
-        attrExt = self._r2.cmdj(f'pfj axml_ResXMLTree_attrExt @ {extAddress}')
+        attrExt = self._r2.cmdj(f"pfj axml_ResXMLTree_attrExt @ {extAddress}")
 
-        attrAddress = extAddress + attrExt[2]['value']
-        attributeSize = attrExt[3]['value']
-        attributeCount = attrExt[4]['value']
+        attrAddress = extAddress + attrExt[2]["value"]
+        attributeSize = attrExt[3]["value"]
+        attributeCount = attrExt[4]["value"]
         result = []
         for _ in range(attributeCount):
             attr = self._r2.cmdj(
-                f'pfj axml_ResXMLTree_attribute @ {attrAddress}')
+                f"pfj axml_ResXMLTree_attribute @ {attrAddress}"
+            )
 
-            result.append({
-                "Namespace": attr[0]['value'][0]['value'],
-                "Name": attr[1]['value'][0]['value'],
-                "Value": attr[2]['value'][0]['value'],
-                "Type": attr[3]['value'][2]['value'],
-                "Data": attr[3]['value'][3]['value']
-            })
+            result.append(
+                {
+                    "Namespace": attr[0]["value"][0]["value"],
+                    "Name": attr[1]["value"][0]["value"],
+                    "Value": attr[2]["value"][0]["value"],
+                    "Type": attr[3]["value"][2]["value"],
+                    "Data": attr[3]["value"][3]["value"],
+                }
+            )
 
             attrAddress = attrAddress + attributeSize
 
